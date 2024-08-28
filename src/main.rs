@@ -1,4 +1,5 @@
 mod gameboy;
+mod instructions;
 mod registers;
 mod rom;
 
@@ -17,8 +18,9 @@ fn read_file_to_bytes(filename: &str) -> Result<Vec<u8>, std::io::Error> {
 fn main() {
     match read_file_to_bytes("pokemon-gold.gbc") {
         Ok(rom_data) => {
-            let gameboy = GameBoy::new(rom_data);
-            println!("Read {:#?}", gameboy)
+            let mut gameboy = GameBoy::new(rom_data);
+            gameboy.step();
+            println!("{:#?}", gameboy)
         }
 
         Err(e) => eprintln!("Error reading file: {}", e),

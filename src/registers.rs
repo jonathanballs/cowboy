@@ -49,16 +49,16 @@ impl fmt::Debug for FlagsRegister {
 }
 
 pub struct Registers {
-    a: u8,
-    b: u8,
-    c: u8,
-    d: u8,
-    e: u8,
+    pub a: u8,
+    pub b: u8,
+    pub c: u8,
+    pub d: u8,
+    pub e: u8,
     f: FlagsRegister,
-    h: u8,
-    l: u8,
-    sp: u16,
-    pc: u16,
+    pub h: u8,
+    pub l: u8,
+    pub sp: u16,
+    pub pc: u16,
 }
 
 impl Registers {
@@ -76,15 +76,6 @@ impl Registers {
             pc: 0x100,
         }
     }
-
-    //fn get_bc(&self) -> u16 {
-    //    (self.b as u16) << 8 | self.c as u16
-    //}
-    //
-    //fn set_bc(&mut self, value: u16) {
-    //    self.b = ((value & 0xFF00) >> 8) as u8;
-    //    self.c = (value & 0xFF) as u8;
-    //}
 }
 
 impl fmt::Debug for Registers {
