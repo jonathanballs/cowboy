@@ -1,3 +1,5 @@
+use std::fmt;
+
 struct FlagsRegister {
     zero: bool,
     subtract: bool,
@@ -35,6 +37,17 @@ impl std::convert::From<u8> for FlagsRegister {
     }
 }
 
+impl fmt::Debug for FlagsRegister {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FlagsRegister")
+            .field("zero", &self.zero)
+            .field("subtract", &self.zero)
+            .field("half_carry", &self.zero)
+            .field("carry", &self.zero)
+            .finish()
+    }
+}
+
 pub struct Registers {
     a: u8,
     b: u8,
@@ -64,12 +77,29 @@ impl Registers {
         }
     }
 
-    fn get_bc(&self) -> u16 {
-        (self.b as u16) << 8 | self.c as u16
-    }
+    //fn get_bc(&self) -> u16 {
+    //    (self.b as u16) << 8 | self.c as u16
+    //}
+    //
+    //fn set_bc(&mut self, value: u16) {
+    //    self.b = ((value & 0xFF00) >> 8) as u8;
+    //    self.c = (value & 0xFF) as u8;
+    //}
+}
 
-    fn set_bc(&mut self, value: u16) {
-        self.b = ((value & 0xFF00) >> 8) as u8;
-        self.c = (value & 0xFF) as u8;
+impl fmt::Debug for Registers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Registers")
+            .field("a", &self.a)
+            .field("b", &self.b)
+            .field("c", &self.c)
+            .field("d", &self.d)
+            .field("e", &self.e)
+            .field("f", &self.f)
+            .field("h", &self.h)
+            .field("l", &self.l)
+            .field("sp", &self.sp)
+            .field("pc", &format_args!("0x{:X}", self.pc))
+            .finish()
     }
 }

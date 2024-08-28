@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{registers::Registers, rom::GBCHeader};
 
 pub struct GameBoy {
@@ -15,5 +17,14 @@ impl GameBoy {
 
     pub fn get_rom_header(&self) -> Result<GBCHeader, &'static str> {
         GBCHeader::new(&self.rom_data)
+    }
+}
+
+impl fmt::Debug for GameBoy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GameBoy")
+            .field("registers", &self.registers)
+            .field("rom", &self.get_rom_header())
+            .finish()
     }
 }

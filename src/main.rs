@@ -18,7 +18,7 @@ fn main() {
     match read_file_to_bytes("pokemon-gold.gbc") {
         Ok(rom_data) => {
             let gameboy = GameBoy::new(rom_data);
-            println!("Read {:?}", gameboy.get_rom_header())
+            println!("Read {:#?}", gameboy)
         }
 
         Err(e) => eprintln!("Error reading file: {}", e),
