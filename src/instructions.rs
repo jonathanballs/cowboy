@@ -126,7 +126,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
     // Block 2
     if opcode & 0xC0 == 0x80 {
         let operand = R8::from(opcode & 0x07);
-        return match opcode >> 3 {
+        return match (opcode >> 3) & 0x7 {
             0 => Instruction::AddAR8(operand),
             1 => Instruction::AdcAR8(operand),
             2 => Instruction::SubAR8(operand),
@@ -141,7 +141,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
     // Block 3
     assert!(opcode & 0xC0 == 0xC0);
 
-    if (opcode & 0x7 == 0x6) {
+    if opcode & 0x7 == 0x6 {
         return match opcode >> 3 {
             0 => Instruction::AddAImm8(imm8),
             1 => Instruction::AdcAImm8(imm8),
@@ -406,4 +406,73 @@ mod test {
     }
 
     // block 1
+    #[test]
+    fn ld_r8_r8() {
+        assert!(matches!(
+            parse(0x61, 0x00, 0x0),
+            Instruction::LdR8R8(R8::H, R8::C)
+        ))
+    }
+
+    #[test]
+    fn halt() {
+        assert!(matches!(parse(0b01110110, 0x0, 0x0), Instruction::Halt))
+    }
+
+    // Block 2
+    #[test]
+    fn add_a_r8() {
+        assert!(matches!(
+            parse(0b10000000, 0x0, 0x0),
+            Instruction::AddAR8(R8::B)
+        ))
+    }
+
+    #[test]
+    fn sub_a_r8() {
+        assert!(matches!(
+            parse(0b10010000, 0x0, 0x0),
+            Instruction::SubAR8(R8::B)
+        ))
+    }
+
+    #[test]
+    fn sbc_a_r8() {
+        assert!(matches!(
+            parse(0b10011000, 0x0, 0x0),
+            Instruction::SbcAR8(R8::B)
+        ))
+    }
+
+    #[test]
+    fn and_a_r8() {
+        assert!(matches!(
+            parse(0b10100000, 0x0, 0x0),
+            Instruction::AndAR8(R8::B)
+        ))
+    }
+
+    #[test]
+    fn xor_a_r8() {
+        assert!(matches!(
+            parse(0b10101000, 0x0, 0x0),
+            Instruction::XorAR8(R8::B)
+        ))
+    }
+
+    #[test]
+    fn or_a_r8() {
+        assert!(matches!(
+            parse(0b10110000, 0x0, 0x0),
+            Instruction::OrAR8(R8::B)
+        ))
+    }
+
+    #[test]
+    fn cp_a_r8() {
+        assert!(matches!(
+            parse(0b10111000, 0x0, 0x0),
+            Instruction::CpAR8(R8::B)
+        ))
+    }
 }
