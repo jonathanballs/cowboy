@@ -3,6 +3,8 @@ mod r16;
 mod r16mem;
 mod r8;
 
+use core::fmt;
+
 use cond::Cond;
 use r16::R16;
 use r16mem::R16mem;
@@ -12,6 +14,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
     let imm16: u16 = (arg2 as u16) << 8 | arg1 as u16;
     let imm8: u8 = arg1;
 
+    // Block 0
     if opcode == 0x00 {
         return Instruction::Nop;
     }
@@ -109,8 +112,8 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
         return Instruction::JrCondImm8(Cond::from(opcode >> 3), imm8);
     }
 
-    // Block 2
-    if (opcode == 0x76) {
+    // Block 1
+    if opcode == 0x76 {
         return Instruction::Halt;
     }
 
@@ -120,17 +123,47 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
         return Instruction::LdR8R8(dest, src);
     }
 
+    // Block 2
+    if opcode & 0xC0 == 0x80 {
+        let operand = R8::from(opcode & 0x07);
+        return match opcode >> 3 {
+            0 => Instruction::AddAR8(operand),
+            1 => Instruction::AdcAR8(operand),
+            2 => Instruction::SubAR8(operand),
+            3 => Instruction::SbcAR8(operand),
+            4 => Instruction::AndAR8(operand),
+            5 => Instruction::XorAR8(operand),
+            6 => Instruction::OrAR8(operand),
+            _ => Instruction::CpAR8(operand),
+        };
+    }
+
     // Block 3
+    assert!(opcode & 0xC0 == 0xC0);
+
+    if (opcode & 0x7 == 0x6) {
+        return match opcode >> 3 {
+            0 => Instruction::AddAImm8(imm8),
+            1 => Instruction::AdcAImm8(imm8),
+            2 => Instruction::SubAImm8(imm8),
+            3 => Instruction::SbcAImm8(imm8),
+            4 => Instruction::AndAImm8(imm8),
+            5 => Instruction::XorAImm8(imm8),
+            6 => Instruction::OrAImm8(imm8),
+            _ => Instruction::CpAImm8(imm8),
+        };
+    }
 
     if opcode == 0xC3 {
         return Instruction::JpImm16(imm16);
     }
 
+    // Block 3
     if opcode == 0xE9 {
         return Instruction::JpHl;
     }
 
-    Instruction::INVALID
+    Instruction::ILLEGAL
 }
 
 #[derive(Debug)]
@@ -171,19 +204,62 @@ pub enum Instruction {
     LdR8R8(R8, R8),
 
     // Block 2
+    AddAR8(R8),
+    AdcAR8(R8),
+    SubAR8(R8),
+    SbcAR8(R8),
+    AndAR8(R8),
+    XorAR8(R8),
+    OrAR8(R8),
+    CpAR8(R8),
 
     // Block 3
+    AddAImm8(u8),
+    AdcAImm8(u8),
+    SubAImm8(u8),
+    SbcAImm8(u8),
+    AndAImm8(u8),
+    XorAImm8(u8),
+    OrAImm8(u8),
+    CpAImm8(u8),
+
     JpHl,
     JpImm16(u16),
 
-    // INVALID
-    INVALID,
+    ILLEGAL,
+}
+
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Create a temporary buffer to capture the default debug output
+        let mut buffer = String::new();
+
+        // Use a temporary formatter to write the default debug format
+        let _ = fmt::write(&mut buffer, format_args!("{:0x?}", self));
+
+        let instruction_name = match buffer[1..].find(char::is_uppercase) {
+            Some(index) => buffer[..index + 1].to_string(),
+            None => buffer.clone(),
+        };
+
+        let args = match buffer.find('(') {
+            Some(index) => &buffer[index + 1..buffer.len() - 1],
+            None => "",
+        };
+
+        // Process the captured string (example: convert to uppercase)
+        let processed = format!("{} {}", instruction_name.to_lowercase(), args);
+
+        // Write the processed string to the actual formatter
+        write!(f, "{}", processed)
+    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::instructions::{parse, Cond, Instruction, R16mem, R16, R8};
 
+    // Block 0
     #[test]
     fn nop() {
         assert!(matches!(parse(0x0, 0x0, 0x0), Instruction::Nop))
@@ -328,4 +404,6 @@ mod test {
     fn stop() {
         assert!(matches!(parse(0x10, 0x00, 0x0), Instruction::Stop))
     }
+
+    // block 1
 }

@@ -49,7 +49,7 @@ impl fmt::Debug for GameBoy {
         f.debug_struct("GameBoy")
             .field("registers", &self.registers)
             .field("rom", &GBCHeader::new(&self.rom_data))
-            .field("instruction", &self.ins())
+            .field("instruction", &self.ins().to_string())
             .finish()
     }
 }
