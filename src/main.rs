@@ -19,7 +19,6 @@ fn main() {
     match read_file_to_bytes("pokemon-gold.gbc") {
         Ok(rom_data) => {
             let mut gameboy = GameBoy::new(rom_data);
-            println!("{:#?}", gameboy);
             gameboy.step();
             println!("{:#?}", gameboy)
         }

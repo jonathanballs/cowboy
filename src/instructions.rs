@@ -1,6 +1,7 @@
 mod cond;
 mod r16;
 mod r16mem;
+mod r16stk;
 mod r8;
 
 use core::fmt;
@@ -8,6 +9,7 @@ use core::fmt;
 use cond::Cond;
 use r16::R16;
 use r16mem::R16mem;
+use r16stk::R16stk;
 use r8::R8;
 
 pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
@@ -125,7 +127,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
 
     // Block 2
     if opcode & 0xC0 == 0x80 {
-        let operand = R8::from(opcode & 0x07);
+        let operand = R8::from(opcode & 0x7);
         return match (opcode >> 3) & 0x7 {
             0 => Instruction::AddAR8(operand),
             1 => Instruction::AdcAR8(operand),
@@ -142,7 +144,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
     assert!(opcode & 0xC0 == 0xC0);
 
     if opcode & 0x7 == 0x6 {
-        return match opcode >> 3 {
+        return match (opcode >> 3) & 0x7 {
             0 => Instruction::AddAImm8(imm8),
             1 => Instruction::AdcAImm8(imm8),
             2 => Instruction::SubAImm8(imm8),
@@ -154,13 +156,92 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
         };
     }
 
+    if opcode & 0xE7 == 0xC0 {
+        return Instruction::RetCond(Cond::from((opcode >> 3) & 0x3));
+    }
+
+    if opcode == 0xC9 {
+        return Instruction::Ret;
+    }
+
+    if opcode == 0xD9 {
+        return Instruction::Reti;
+    }
+
+    if opcode & 0xE7 == 0xC2 {
+        return Instruction::JpCondImm16(Cond::from((opcode >> 3) & 0x3), imm16);
+    }
+
     if opcode == 0xC3 {
         return Instruction::JpImm16(imm16);
     }
 
-    // Block 3
     if opcode == 0xE9 {
         return Instruction::JpHl;
+    }
+
+    if opcode & 0xE7 == 0xC4 {
+        return Instruction::CallCondImm16(Cond::from((opcode >> 3) & 0x3), imm16);
+    }
+
+    if opcode == 0xCD {
+        return Instruction::CallImm16(imm16);
+    }
+
+    if opcode & 0xC7 == 0xC7 {
+        return Instruction::RstTgt3((opcode >> 3) & 0x7);
+    }
+
+    if opcode & 0xCF == 0xC1 {
+        return Instruction::PopR16stk(R16stk::from(opcode >> 3));
+    }
+
+    if opcode & 0xCF == 0xC5 {
+        return Instruction::PushR16stk(R16stk::from(opcode >> 3));
+    }
+
+    if opcode == 0xE2 {
+        return Instruction::LdhCA;
+    }
+
+    if opcode == 0xE0 {
+        return Instruction::LdhImm8A(imm8);
+    }
+
+    if opcode == 0xEA {
+        return Instruction::LdImm16A(imm16);
+    }
+
+    if opcode == 0xF2 {
+        return Instruction::LdhAC;
+    }
+
+    if opcode == 0xF0 {
+        return Instruction::LdhAImm8(imm8);
+    }
+
+    if opcode == 0xFA {
+        return Instruction::LdAImm16(imm16);
+    }
+
+    if opcode == 0xE8 {
+        return Instruction::AddSpImm8(imm8);
+    }
+
+    if opcode == 0xF8 {
+        return Instruction::LdHlSpImm8(imm8);
+    }
+
+    if opcode == 0xF9 {
+        return Instruction::LdSpHl;
+    }
+
+    if opcode == 0xF3 {
+        return Instruction::Di;
+    }
+
+    if opcode == 0xFB {
+        return Instruction::Ei;
     }
 
     Instruction::ILLEGAL
@@ -223,8 +304,44 @@ pub enum Instruction {
     OrAImm8(u8),
     CpAImm8(u8),
 
-    JpHl,
+    RetCond(Cond),
+    Ret,
+    Reti,
+    JpCondImm16(Cond, u16),
     JpImm16(u16),
+    JpHl,
+    CallCondImm16(Cond, u16),
+    CallImm16(u16),
+    RstTgt3(u8),
+    PopR16stk(R16stk),
+    PushR16stk(R16stk),
+
+    LdhCA,
+    LdhImm8A(u8),
+    LdImm16A(u16),
+    LdhAC,
+    LdhAImm8(u8),
+    LdAImm16(u16),
+
+    AddSpImm8(u8),
+    LdHlSpImm8(u8),
+    LdSpHl,
+    Di,
+    Ei,
+
+    // Prefix
+    RlcR8(R8),
+    RrcR8(R8),
+    RlR8(R8),
+    RrR8(R8),
+    SlaR8(R8),
+    SraR8(R8),
+    SwapR8(R8),
+    SrlR8(R8),
+
+    BitB3R8(u8, R8),
+    ResB3R8(u8, R8),
+    SetB3R8(u8, R8),
 
     ILLEGAL,
 }
@@ -429,6 +546,14 @@ mod test {
     }
 
     #[test]
+    fn adc_a_r8() {
+        assert!(matches!(
+            parse(0b10001000, 0x0, 0x0),
+            Instruction::AdcAR8(R8::B)
+        ))
+    }
+
+    #[test]
     fn sub_a_r8() {
         assert!(matches!(
             parse(0b10010000, 0x0, 0x0),
@@ -473,6 +598,71 @@ mod test {
         assert!(matches!(
             parse(0b10111000, 0x0, 0x0),
             Instruction::CpAR8(R8::B)
+        ))
+    }
+
+    // Block 3
+    #[test]
+    fn add_a_imm8() {
+        assert!(matches!(
+            parse(0b11000110, 0x1, 0x0),
+            Instruction::AddAImm8(0x1)
+        ))
+    }
+
+    #[test]
+    fn adc_a_imm8() {
+        assert!(matches!(
+            parse(0b11001110, 0x1, 0x0),
+            Instruction::AdcAImm8(0x1)
+        ))
+    }
+
+    #[test]
+    fn sub_a_imm8() {
+        assert!(matches!(
+            parse(0b11010110, 0x1, 0x0),
+            Instruction::SubAImm8(0x1)
+        ))
+    }
+
+    #[test]
+    fn sbc_a_imm8() {
+        assert!(matches!(
+            parse(0b11011110, 0x1, 0x0),
+            Instruction::SbcAImm8(0x1)
+        ))
+    }
+
+    #[test]
+    fn and_a_imm8() {
+        assert!(matches!(
+            parse(0b11100110, 0x1, 0x0),
+            Instruction::AndAImm8(0x1)
+        ))
+    }
+
+    #[test]
+    fn xor_a_imm8() {
+        assert!(matches!(
+            parse(0b11101110, 0x1, 0x0),
+            Instruction::XorAImm8(0x1)
+        ))
+    }
+
+    #[test]
+    fn or_a_imm8() {
+        assert!(matches!(
+            parse(0b11110110, 0x1, 0x0),
+            Instruction::OrAImm8(0x1)
+        ))
+    }
+
+    #[test]
+    fn cp_a_imm8() {
+        assert!(matches!(
+            parse(0b11111110, 0x1, 0x0),
+            Instruction::CpAImm8(0x1)
         ))
     }
 }
