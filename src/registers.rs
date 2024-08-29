@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::instructions::{r16::R16, r8::R8};
+use crate::instructions::{r16::R16, r16mem::R16mem, r8::R8};
 
 pub struct FlagsRegister {
     pub zero: bool,
@@ -82,7 +82,45 @@ impl Registers {
     pub fn set_r16(&mut self, register: R16, value: u16) {
         match register {
             R16::SP => self.sp = value,
-            _ => todo!(),
+            R16::BC => {
+                self.b = (value >> 8) as u8;
+                self.c = (value & 0xFF) as u8
+            }
+
+            R16::HL => {
+                self.h = (value >> 8) as u8;
+                self.l = (value & 0xFF) as u8
+            }
+            R16::DE => {
+                self.d = (value >> 8) as u8;
+                self.e = (value & 0xFF) as u8
+            }
+        }
+    }
+
+    pub fn get_r16(&self, register: R16) -> u16 {
+        match register {
+            R16::SP => self.sp,
+            R16::BC => ((self.b as u16) << 8) | (self.c as u16),
+            R16::DE => ((self.d as u16) << 8) | (self.e as u16),
+            R16::HL => ((self.h as u16) << 8) | (self.l as u16),
+        }
+    }
+
+    pub fn get_r16_mem(&mut self, register: R16mem) -> u16 {
+        match register {
+            R16mem::BC => self.get_r16(R16::BC),
+            R16mem::DE => self.get_r16(R16::DE),
+            R16mem::HLI => {
+                let hl = self.get_r16(R16::HL);
+                self.set_r16(R16::HL, hl + 1);
+                hl
+            }
+            R16mem::HLD => {
+                let hl = self.get_r16(R16::HL);
+                self.set_r16(R16::HL, hl - 1);
+                hl
+            }
         }
     }
 
@@ -104,15 +142,15 @@ impl Registers {
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Registers")
-            .field("a", &self.a)
-            .field("b", &self.b)
-            .field("c", &self.c)
-            .field("d", &self.d)
-            .field("e", &self.e)
+            .field("a", &format_args!("0x{:X}", self.a))
+            .field("b", &format_args!("0x{:X}", self.b))
+            .field("c", &format_args!("0x{:X}", self.c))
+            .field("d", &format_args!("0x{:X}", self.d))
+            .field("e", &format_args!("0x{:X}", self.e))
             .field("f", &self.f)
-            .field("h", &self.h)
-            .field("l", &self.l)
-            .field("sp", &self.sp)
+            .field("h", &format_args!("0x{:X}", self.h))
+            .field("l", &format_args!("0x{:X}", self.l))
+            .field("sp", &format_args!("0x{:X}", self.sp))
             .field("pc", &format_args!("0x{:X}", self.pc))
             .finish()
     }

@@ -245,8 +245,9 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
 
     // Prefixed instructions
     if opcode == 0xCB {
+        let operand = R8::from(arg1 & 0x7);
+
         if (arg1 & 0xC0) == 0x0 {
-            let operand = R8::from(arg1 & 0x7);
             return match arg1 & 0x38 {
                 0 => Instruction::RlcR8(operand),
                 1 => Instruction::RrcR8(operand),
@@ -258,6 +259,15 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
                 _ => Instruction::SrlR8(operand),
             };
         }
+
+        let bit_index = (arg1 >> 3) & 0x7;
+
+        return match (arg1 & 0xC0) >> 6 {
+            0x1 => Instruction::BitB3R8(bit_index, operand),
+            0x2 => Instruction::ResB3R8(bit_index, operand),
+            0x3 => Instruction::SetB3R8(bit_index, operand),
+            _ => unreachable!(),
+        };
     }
 
     Instruction::ILLEGAL

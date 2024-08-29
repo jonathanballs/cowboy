@@ -1,4 +1,5 @@
-#[derive(Debug)]
+use std::fmt;
+
 pub enum R16mem {
     BC,
     DE,
@@ -13,6 +14,17 @@ impl std::convert::From<u8> for R16mem {
             1 => Self::DE,
             2 => Self::HLI,
             _ => Self::HLD,
+        }
+    }
+}
+
+impl fmt::Debug for R16mem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            R16mem::BC => write!(f, "BC"),
+            R16mem::DE => write!(f, "DE"),
+            R16mem::HLI => write!(f, "[HL+]"),
+            R16mem::HLD => write!(f, "[HL-]"),
         }
     }
 }

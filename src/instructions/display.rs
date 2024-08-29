@@ -2,18 +2,22 @@ use super::Instruction;
 use std::fmt;
 
 fn split_camel_case(s: &str) -> Vec<String> {
-    s.chars()
-        .fold(
-            (Vec::new(), String::new()),
-            |(mut words, mut current), c| {
-                if c.is_uppercase() && !current.is_empty() {
-                    words.push(std::mem::take(&mut current));
-                }
-                current.push(c);
-                (words, current)
-            },
-        )
-        .0
+    let mut result = Vec::new();
+    let mut current_word = String::new();
+
+    for (i, c) in s.char_indices() {
+        if i > 0 && c.is_uppercase() {
+            result.push(current_word);
+            current_word = String::new();
+        }
+        current_word.push(c);
+    }
+
+    if !current_word.is_empty() {
+        result.push(current_word);
+    }
+
+    result
 }
 
 impl fmt::Display for Instruction {
@@ -29,17 +33,10 @@ impl fmt::Display for Instruction {
             None => buffer.clone(),
         };
 
-        let filtered = ["imm16", "imm8", "r8", "r16"];
+        let filtered = ["imm16", "imm8", "r8", "r16", "b3", "r16mem"];
 
-        let instruction_formatted = split_camel_case(&instruction_name)
-            .into_iter()
-            .map(|s| s.to_lowercase())
-            .filter(|s| !filtered.contains(&s.as_str()))
-            .collect::<Vec<String>>()
-            .join(" ");
-
-        let args = match buffer.find('(') {
-            Some(index) => &buffer[index + 1..buffer.len() - 1]
+        let args: &mut Vec<String> = match buffer.find('(') {
+            Some(index) => &mut buffer[index + 1..buffer.len() - 1]
                 .split(',')
                 .into_iter()
                 .map(|s| s.trim())
@@ -48,14 +45,26 @@ impl fmt::Display for Instruction {
                         .map(|n| format!("{:#x}", n))
                         .unwrap_or_else(|_| s.to_string())
                 })
-                .collect::<Vec<String>>()
-                .join(", ")
-                .to_lowercase(),
-            None => "",
+                .rev()
+                .collect::<Vec<String>>(),
+            None => &mut Vec::new(),
         };
 
+        let instruction_formatted = split_camel_case(&instruction_name)
+            .into_iter()
+            .map(|s| s.to_lowercase())
+            .map(|s| {
+                if filtered.contains(&s.as_str()) {
+                    args.pop().unwrap_or(s).to_lowercase()
+                } else {
+                    s.to_lowercase()
+                }
+            })
+            .collect::<Vec<String>>()
+            .join(" ");
+
         // Process the captured string (example: convert to uppercase)
-        let processed = format!("{} {}", instruction_formatted, args);
+        let processed = format!("{}", instruction_formatted);
 
         // Write the processed string to the actual formatter
         write!(f, "{}", processed)
