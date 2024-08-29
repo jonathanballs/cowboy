@@ -97,7 +97,10 @@ impl GameBoy {
                 }
                 self.registers.pc += 2
             }
-            Instruction::JrImm8(value) => self.relative_jump(value as i8),
+            Instruction::JrImm8(value) => {
+                self.relative_jump(value as i8);
+                self.registers.pc += 2
+            }
             Instruction::LdR8Imm8(reg, value) => {
                 self.registers.set_r8(reg, value);
                 self.registers.pc += 2
@@ -113,6 +116,21 @@ impl GameBoy {
                 self.registers.f.zero = value == 0;
                 self.registers.f.subtract = false;
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F;
+
+                self.registers.pc += 1
+            }
+            Instruction::IncR16(reg) => {
+                self.registers.set_r16(
+                    reg.clone(),
+                    self.registers.get_r16(reg.clone()).wrapping_add(1),
+                );
+
+                let value = self.registers.get_r16(reg.clone());
+                if matches!(reg, R16::HL) {
+                    self.registers.f.zero = value == 0;
+                    self.registers.f.subtract = false;
+                    self.registers.f.half_carry = (value & 0x0F) == 0x0F;
+                }
 
                 self.registers.pc += 1
             }
@@ -142,7 +160,7 @@ impl GameBoy {
                 self.registers.pc += 1
             }
             Instruction::CallImm16(addr) => {
-                self.set_memory_word(self.registers.sp - 2, self.registers.pc);
+                self.set_memory_word(self.registers.sp - 2, self.registers.pc + 3);
                 self.registers.sp -= 2;
                 self.registers.pc = addr
             }
@@ -181,6 +199,29 @@ impl GameBoy {
                 self.registers.set_r16_stk(reg, value);
                 self.registers.sp += 2;
                 self.registers.pc += 1;
+            }
+            Instruction::Ret => {
+                let addr = self.get_memory_word(self.registers.sp);
+                self.registers.sp += 2;
+                self.registers.pc = addr;
+            }
+            Instruction::CpAImm8(value) => {
+                let result = self.registers.a.wrapping_sub(value);
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = value > self.registers.a;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
+                self.registers.f.subtract = true;
+
+                self.registers.pc += 2;
+            }
+            Instruction::LdImm16A(addr) => {
+                self.registers.a = self.get_memory_byte(addr);
+                self.registers.pc += 3;
+            }
+            Instruction::LdhAImm8(value) => {
+                let target_address = 0xFF00 + value as u16;
+                self.registers.a = self.get_memory_byte(target_address);
+                self.registers.pc += 2
             }
 
             _ => {
