@@ -21,7 +21,6 @@ fn main() {
         Ok(rom_data) => {
             let mut gameboy = GameBoy::new(rom_data);
             loop {
-                println!("{}", gameboy.format_instruction());
                 gameboy.step();
             }
         }

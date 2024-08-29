@@ -33,7 +33,7 @@ impl fmt::Display for Instruction {
             None => buffer.clone(),
         };
 
-        let filtered = ["imm16", "imm8", "r8", "r16", "b3", "r16mem"];
+        let filtered = ["imm16", "imm8", "r8", "r16", "b3", "r16mem", "cond"];
 
         let args: &mut Vec<String> = match buffer.find('(') {
             Some(index) => &mut buffer[index + 1..buffer.len() - 1]

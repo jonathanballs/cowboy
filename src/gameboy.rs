@@ -53,6 +53,7 @@ impl GameBoy {
     }
 
     pub fn step(&mut self) {
+        println!("{}", self.format_instruction());
         let opcode = self.ins();
 
         match opcode {
@@ -63,7 +64,7 @@ impl GameBoy {
                 self.registers.pc += 3;
             }
             Instruction::XorAR8(reg) => {
-                let r = self.registers.a ^ self.registers.get_r8(reg.clone());
+                let r = self.registers.a ^ self.get_r8_byte(reg.clone());
                 self.registers.f.zero = r == 0;
                 self.registers.f.subtract = false;
                 self.registers.f.carry = false;
@@ -73,14 +74,36 @@ impl GameBoy {
             }
             Instruction::LdR16memA(r16) => {
                 let target_address = self.registers.get_r16_mem(r16);
-                let value = self.registers.get_r8(R8::A);
+                let value = self.get_r8_byte(R8::A);
                 self.set_memory_byte(target_address, value);
                 self.registers.pc += 1
             }
+            Instruction::BitB3R8(i, reg) => {
+                let result = (self.get_r8_byte(reg) >> i) & 1;
+                self.registers.f.zero = result == 0;
+                self.registers.f.subtract = false;
+                self.registers.f.half_carry = true;
+                self.registers.pc += 2
+            }
+            Instruction::JrCondImm8(cond, value) => {
+                if self.registers.f.evaluate_condition(cond) {
+                    self.relative_jump(value as i8)
+                }
+                self.registers.pc += 2
+            }
+            Instruction::JrImm8(value) => self.relative_jump(value as i8),
             _ => {
                 dbg!(self);
                 todo!();
             }
+        };
+    }
+
+    fn relative_jump(&mut self, distance: i8) {
+        let _ = if distance >= 0 {
+            self.registers.pc = self.registers.pc.wrapping_add(distance as u16)
+        } else {
+            self.registers.pc = self.registers.pc.wrapping_sub(distance.abs() as u16)
         };
     }
 
@@ -90,6 +113,13 @@ impl GameBoy {
             self.registers.pc,
             self.ins()
         )
+    }
+
+    fn get_r8_byte(&self, reg: R8) -> u8 {
+        match reg {
+            R8::HL => self.get_memory_byte(self.registers.get_r16(R16::HL)),
+            _ => self.registers.get_r8(reg),
+        }
     }
 }
 
