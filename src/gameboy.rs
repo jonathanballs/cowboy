@@ -44,6 +44,12 @@ impl GameBoy {
         self.set_memory_byte(addr + 1, big)
     }
 
+    pub fn get_memory_word(&mut self, addr: u16) -> u16 {
+        let little = self.get_memory_byte(addr) as u16;
+        let big = self.get_memory_byte(addr + 1) as u16;
+        return (big << 8) | little;
+    }
+
     pub fn ins(&self) -> Instruction {
         let opcode = self.get_memory_byte(self.registers.pc);
         let arg_1 = self.get_memory_byte(self.registers.pc + 1);
@@ -92,6 +98,91 @@ impl GameBoy {
                 self.registers.pc += 2
             }
             Instruction::JrImm8(value) => self.relative_jump(value as i8),
+            Instruction::LdR8Imm8(reg, value) => {
+                self.registers.set_r8(reg, value);
+                self.registers.pc += 2
+            }
+            Instruction::LdhCA => {
+                let target_address = 0xFF00 + self.registers.c as u16;
+                self.set_memory_byte(target_address, self.registers.a);
+                self.registers.pc += 1
+            }
+            Instruction::IncR8(reg) => {
+                self.set_r8_byte(reg.clone(), self.get_r8_byte(reg.clone()).wrapping_add(1));
+                let value = self.get_r8_byte(reg);
+                self.registers.f.zero = value == 0;
+                self.registers.f.subtract = false;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F;
+
+                self.registers.pc += 1
+            }
+            Instruction::DecR8(reg) => {
+                self.set_r8_byte(reg.clone(), self.get_r8_byte(reg.clone()).wrapping_sub(1));
+                let value = self.get_r8_byte(reg);
+
+                self.registers.f.zero = value == 0;
+                self.registers.f.subtract = false;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F;
+
+                self.registers.pc += 1
+            }
+            Instruction::LdR8R8(dest, src) => {
+                self.set_r8_byte(dest, self.get_r8_byte(src));
+                self.registers.pc += 1
+            }
+            Instruction::LdhImm8A(addr) => {
+                let value = self.get_memory_byte(0xFF + addr as u16);
+                self.set_r8_byte(R8::A, value);
+                self.registers.pc += 2
+            }
+            Instruction::LdAR16mem(reg) => {
+                let addr = self.registers.get_r16_mem(reg);
+                let value = self.get_memory_byte(addr);
+                self.registers.set_r8(R8::A, value);
+                self.registers.pc += 1
+            }
+            Instruction::CallImm16(addr) => {
+                self.set_memory_word(self.registers.sp - 2, self.registers.pc);
+                self.registers.sp -= 2;
+                self.registers.pc = addr
+            }
+            Instruction::PushR16stk(reg) => {
+                self.set_memory_word(self.registers.sp - 2, self.registers.get_r16_stk(reg));
+                self.registers.sp -= 2;
+                self.registers.pc += 1;
+            }
+            Instruction::RlR8(reg) => {
+                let value = self.get_r8_byte(reg.clone());
+                let new_value = (value << 1) | self.registers.f.carry as u8;
+
+                self.set_r8_byte(reg, new_value);
+
+                self.registers.f.zero = new_value == 0;
+                self.registers.f.subtract = false;
+                self.registers.f.half_carry = false;
+                self.registers.f.carry = value >> 7 == 1;
+
+                self.registers.pc += 2;
+            }
+            Instruction::Rla => {
+                let value = self.get_r8_byte(R8::A);
+                let new_value = (value << 1) | self.registers.f.carry as u8;
+
+                self.set_r8_byte(R8::A, new_value);
+
+                self.registers.f.subtract = false;
+                self.registers.f.half_carry = false;
+                self.registers.f.carry = value >> 7 == 1;
+
+                self.registers.pc += 1;
+            }
+            Instruction::PopR16stk(reg) => {
+                let value = self.get_memory_word(self.registers.sp);
+                self.registers.set_r16_stk(reg, value);
+                self.registers.sp += 2;
+                self.registers.pc += 1;
+            }
+
             _ => {
                 dbg!(self);
                 todo!();
@@ -119,6 +210,13 @@ impl GameBoy {
         match reg {
             R8::HL => self.get_memory_byte(self.registers.get_r16(R16::HL)),
             _ => self.registers.get_r8(reg),
+        }
+    }
+
+    fn set_r8_byte(&mut self, reg: R8, value: u8) {
+        match reg {
+            R8::HL => self.set_memory_byte(self.registers.get_r16(R16::HL), value),
+            _ => self.registers.set_r8(reg, value),
         }
     }
 }

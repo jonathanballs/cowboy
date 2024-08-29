@@ -248,7 +248,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
         let operand = R8::from(arg1 & 0x7);
 
         if (arg1 & 0xC0) == 0x0 {
-            return match arg1 & 0x38 {
+            return match (arg1 & 0x38) >> 3 {
                 0 => Instruction::RlcR8(operand),
                 1 => Instruction::RrcR8(operand),
                 2 => Instruction::RlR8(operand),

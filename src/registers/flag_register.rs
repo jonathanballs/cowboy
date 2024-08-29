@@ -23,6 +23,13 @@ impl FlagsRegister {
             Cond::NC => !self.carry,
         }
     }
+
+    pub fn as_byte(&self) -> u8 {
+        return ((self.zero as u8) << ZERO_FLAG_BYTE_POSITION)
+            | ((self.subtract as u8) << SUBTRACT_FLAG_BYTE_POSITION)
+            | ((self.half_carry as u8) << HALF_CARRY_FLAG_BYTE_POSITION)
+            | ((self.carry as u8) << CARRY_FLAG_BYTE_POSITION);
+    }
 }
 
 impl std::convert::From<FlagsRegister> for u8 {

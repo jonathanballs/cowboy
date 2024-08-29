@@ -4,7 +4,7 @@ mod flag_register;
 
 use flag_register::FlagsRegister;
 
-use crate::instructions::{r16::R16, r16mem::R16mem, r8::R8};
+use crate::instructions::{r16::R16, r16mem::R16mem, r16stk::R16stk, r8::R8};
 
 pub struct Registers {
     pub a: u8,
@@ -80,6 +80,27 @@ impl Registers {
         }
     }
 
+    pub fn get_r16_stk(&self, register: R16stk) -> u16 {
+        match register {
+            R16stk::BC => self.get_r16(R16::BC),
+            R16stk::DE => self.get_r16(R16::DE),
+            R16stk::HL => self.get_r16(R16::HL),
+            R16stk::AF => ((self.a as u16) << 8) | (self.f.as_byte() as u16),
+        }
+    }
+
+    pub fn set_r16_stk(&mut self, register: R16stk, value: u16) {
+        match register {
+            R16stk::BC => self.set_r16(R16::BC, value),
+            R16stk::DE => self.set_r16(R16::DE, value),
+            R16stk::HL => self.set_r16(R16::HL, value),
+            R16stk::AF => {
+                self.a = (value >> 8) as u8;
+                self.f = FlagsRegister::from((value & 0xFF) as u8);
+            }
+        }
+    }
+
     pub fn get_r8(&self, register: R8) -> u8 {
         match register {
             R8::A => self.a,
@@ -96,7 +117,13 @@ impl Registers {
     pub fn set_r8(&mut self, register: R8, value: u8) {
         match register {
             R8::A => self.a = value,
-            _ => todo!(),
+            R8::B => self.b = value,
+            R8::C => self.c = value,
+            R8::D => self.d = value,
+            R8::E => self.e = value,
+            R8::H => self.h = value,
+            R8::L => self.l = value,
+            _ => unreachable!(),
         }
     }
 }
