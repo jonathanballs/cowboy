@@ -1,10 +1,12 @@
 use std::fmt;
 
-struct FlagsRegister {
-    zero: bool,
-    subtract: bool,
-    half_carry: bool,
-    carry: bool,
+use crate::instructions::{r16::R16, r8::R8};
+
+pub struct FlagsRegister {
+    pub zero: bool,
+    pub subtract: bool,
+    pub half_carry: bool,
+    pub carry: bool,
 }
 
 const ZERO_FLAG_BYTE_POSITION: u8 = 7;
@@ -54,7 +56,7 @@ pub struct Registers {
     pub c: u8,
     pub d: u8,
     pub e: u8,
-    f: FlagsRegister,
+    pub f: FlagsRegister,
     pub h: u8,
     pub l: u8,
     pub sp: u16,
@@ -73,7 +75,28 @@ impl Registers {
             h: 0,
             l: 0,
             sp: 0,
-            pc: 0x100,
+            pc: 0,
+        }
+    }
+
+    pub fn set_r16(&mut self, register: R16, value: u16) {
+        match register {
+            R16::SP => self.sp = value,
+            _ => todo!(),
+        }
+    }
+
+    pub fn get_r8(&self, register: R8) -> u8 {
+        match register {
+            R8::A => self.a,
+            _ => todo!(),
+        }
+    }
+
+    pub fn set_r8(&mut self, register: R8, value: u8) {
+        match register {
+            R8::A => self.a = value,
+            _ => todo!(),
         }
     }
 }

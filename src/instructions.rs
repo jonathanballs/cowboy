@@ -1,10 +1,9 @@
-mod cond;
-mod r16;
-mod r16mem;
-mod r16stk;
-mod r8;
-
-use core::fmt;
+pub mod cond;
+mod display;
+pub mod r16;
+pub mod r16mem;
+pub mod r16stk;
+pub mod r8;
 
 use cond::Cond;
 use r16::R16;
@@ -244,6 +243,23 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
         return Instruction::Ei;
     }
 
+    // Prefixed instructions
+    if opcode == 0xCB {
+        if (arg1 & 0xC0) == 0x0 {
+            let operand = R8::from(arg1 & 0x7);
+            return match arg1 & 0x38 {
+                0 => Instruction::RlcR8(operand),
+                1 => Instruction::RrcR8(operand),
+                2 => Instruction::RlR8(operand),
+                3 => Instruction::RrR8(operand),
+                4 => Instruction::SlaR8(operand),
+                5 => Instruction::SraR8(operand),
+                6 => Instruction::SwapR8(operand),
+                _ => Instruction::SrlR8(operand),
+            };
+        }
+    }
+
     Instruction::ILLEGAL
 }
 
@@ -344,32 +360,6 @@ pub enum Instruction {
     SetB3R8(u8, R8),
 
     ILLEGAL,
-}
-
-impl fmt::Display for Instruction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Create a temporary buffer to capture the default debug output
-        let mut buffer = String::new();
-
-        // Use a temporary formatter to write the default debug format
-        let _ = fmt::write(&mut buffer, format_args!("{:0x?}", self));
-
-        let instruction_name = match buffer[1..].find(char::is_uppercase) {
-            Some(index) => buffer[..index + 1].to_string(),
-            None => buffer.clone(),
-        };
-
-        let args = match buffer.find('(') {
-            Some(index) => &buffer[index + 1..buffer.len() - 1],
-            None => "",
-        };
-
-        // Process the captured string (example: convert to uppercase)
-        let processed = format!("{} {}", instruction_name.to_lowercase(), args);
-
-        // Write the processed string to the actual formatter
-        write!(f, "{}", processed)
-    }
 }
 
 #[cfg(test)]

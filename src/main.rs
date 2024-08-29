@@ -1,5 +1,6 @@
+mod bootrom;
 mod gameboy;
-mod instructions;
+pub mod instructions;
 mod registers;
 mod rom;
 
@@ -19,8 +20,10 @@ fn main() {
     match read_file_to_bytes("pokemon-gold.gbc") {
         Ok(rom_data) => {
             let mut gameboy = GameBoy::new(rom_data);
-            gameboy.step();
-            println!("{:#?}", gameboy)
+            loop {
+                println!("{}", gameboy.format_instruction());
+                gameboy.step();
+            }
         }
 
         Err(e) => eprintln!("Error reading file: {}", e),
