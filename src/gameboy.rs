@@ -24,9 +24,26 @@ impl GameBoy {
 
     pub fn get_memory_byte(&self, addr: u16) -> u8 {
         match addr {
+            // Boot Rom
             0x0..=0xFF => BOOT_ROM[addr as usize],
+
+            // Cartridge Rom
             0x100..=0x7FFF => *self.rom_data.get(addr as usize).unwrap_or(&0),
-            0x8000..=0xFFFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+
+            // Internal Ram
+            0x8000..=0xFEFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+
+            // I/O Registers
+            0xFF00..=0xFF7F => {
+                dbg!(&self);
+                todo!()
+            }
+
+            // Internal HRam
+            0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+
+            // Interrupt Register
+            0xFFFF => todo!(),
         }
     }
 
