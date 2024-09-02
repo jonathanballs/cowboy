@@ -26,7 +26,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
 
     if opcode & 0xCF == 0x01 {
         let dest = (opcode >> 4) & 0x03;
-        return Instruction::LdR16Imm16(R16::from(dest), imm16);
+        return Instruction::LdR16Imm16mem(R16::from(dest), imm16);
     }
 
     if opcode & 0xCF == 0x02 {
@@ -40,7 +40,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
     }
 
     if opcode & 0xFF == 0x08 {
-        return Instruction::LdImm16Sp(imm16);
+        return Instruction::LdImm16memSp(imm16);
     }
 
     if opcode & 0xCF == 0x03 {
@@ -200,27 +200,27 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
     }
 
     if opcode == 0xE2 {
-        return Instruction::LdhCA;
+        return Instruction::LdhCmemA;
     }
 
     if opcode == 0xE0 {
-        return Instruction::LdhImm8A(imm8);
+        return Instruction::LdhImm8memA(imm8);
     }
 
     if opcode == 0xEA {
-        return Instruction::LdImm16A(imm16);
+        return Instruction::LdImm16memA(imm16);
     }
 
     if opcode == 0xF2 {
-        return Instruction::LdhAC;
+        return Instruction::LdhACmem;
     }
 
     if opcode == 0xF0 {
-        return Instruction::LdhAImm8(imm8);
+        return Instruction::LdhAImm8mem(imm8);
     }
 
     if opcode == 0xFA {
-        return Instruction::LdAImm16(imm16);
+        return Instruction::LdAImm16mem(imm16);
     }
 
     if opcode == 0xE8 {
@@ -278,10 +278,10 @@ pub enum Instruction {
     // Block 0
     Nop,
 
-    LdR16Imm16(R16, u16),
+    LdR16Imm16mem(R16, u16),
     LdR16memA(R16mem),
     LdAR16mem(R16mem),
-    LdImm16Sp(u16),
+    LdImm16memSp(u16),
 
     IncR16(R16),
     DecR16(R16),
@@ -342,12 +342,12 @@ pub enum Instruction {
     PopR16stk(R16stk),
     PushR16stk(R16stk),
 
-    LdhCA,
-    LdhImm8A(u8),
-    LdImm16A(u16),
-    LdhAC,
-    LdhAImm8(u8),
-    LdAImm16(u16),
+    LdhCmemA,
+    LdhImm8memA(u8),
+    LdImm16memA(u16),
+    LdhACmem,
+    LdhAImm8mem(u8),
+    LdAImm16mem(u16),
 
     AddSpImm8(u8),
     LdHlSpImm8(u8),
@@ -395,12 +395,12 @@ mod test {
     fn ld_r16_imm16() {
         assert!(matches!(
             parse(0x01, 0xC6, 0x5),
-            Instruction::LdR16Imm16(R16::BC, 0x05C6)
+            Instruction::LdR16Imm16mem(R16::BC, 0x05C6)
         ));
 
         assert!(matches!(
             parse(0x31, 0x0, 0x0),
-            Instruction::LdR16Imm16(R16::SP, 0x0)
+            Instruction::LdR16Imm16mem(R16::SP, 0x0)
         ))
     }
 
@@ -424,7 +424,7 @@ mod test {
     fn ld_imm16_sp() {
         assert!(matches!(
             parse(0x8, 0x34, 0x12),
-            Instruction::LdImm16Sp(0x1234)
+            Instruction::LdImm16memSp(0x1234)
         ));
     }
 

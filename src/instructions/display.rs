@@ -1,4 +1,5 @@
 use super::Instruction;
+use colored::*;
 use std::fmt;
 
 fn split_camel_case(s: &str) -> Vec<String> {
@@ -33,8 +34,6 @@ impl fmt::Display for Instruction {
             None => buffer.clone(),
         };
 
-        let filtered = ["imm16", "imm8", "r8", "r16", "b3", "r16mem", "cond"];
-
         let args: &mut Vec<String> = match buffer.find('(') {
             Some(index) => &mut buffer[index + 1..buffer.len() - 1]
                 .split(',')
@@ -53,12 +52,23 @@ impl fmt::Display for Instruction {
         let instruction_formatted = split_camel_case(&instruction_name)
             .into_iter()
             .map(|s| s.to_lowercase())
-            .map(|s| {
-                if filtered.contains(&s.as_str()) {
-                    args.pop().unwrap_or(s).to_lowercase()
-                } else {
-                    s.to_lowercase()
-                }
+            .map(|s| match s.as_str() {
+                "imm8" => args.pop().unwrap().green().to_string(),
+                "imm16" => args.pop().unwrap().green().to_string(),
+
+                // Registers
+                "r8" => args.pop().unwrap().cyan().to_string(),
+                "r16" => args.pop().unwrap().cyan().to_string(),
+                "a" => "a".cyan().to_string(),
+
+                // Memory address
+                "r16mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
+                "imm8mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
+                "imm16mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
+
+                "b3" => args.pop().unwrap().blue().to_string(),
+                "cond" => args.pop().unwrap().to_string(),
+                _ => s,
             })
             .collect::<Vec<String>>()
             .join(" ");
@@ -67,6 +77,6 @@ impl fmt::Display for Instruction {
         let processed = format!("{}", instruction_formatted);
 
         // Write the processed string to the actual formatter
-        write!(f, "{}", processed)
+        write!(f, "{}", processed.to_lowercase())
     }
 }

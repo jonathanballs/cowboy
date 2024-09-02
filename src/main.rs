@@ -56,7 +56,7 @@ fn main() {
     let emulator_loop = thread::spawn(move || {
         emulator_loop();
     });
-    //window_loop();
+    window_loop();
 
     let _ = emulator_loop.join();
 }

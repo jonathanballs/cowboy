@@ -100,16 +100,22 @@ impl GameBoy {
         let opcode = self.ins();
         self.ppu.do_cycle(1);
 
-        //println!("{}", self.format_instruction());
-        //if self.registers.pc == 0x89 {
-        //    dbg!(&self);
-        //    sleep_ms(1000);
-        //}
+        println!("{}", self.format_instruction());
+        if self.registers.pc == 0x34 {
+            dbg!(&self);
+
+            for i in 0..128 {
+                let mem_start = i * 16;
+                println!("{} {:x?}", i, &self.ram[mem_start..mem_start + 16]);
+            }
+            panic!("sorry");
+            sleep_ms(1000);
+        }
 
         match opcode {
             Instruction::Nop => self.registers.pc += 1,
             Instruction::JpImm16(pc) => self.registers.pc = pc,
-            Instruction::LdR16Imm16(reg, value) => {
+            Instruction::LdR16Imm16mem(reg, value) => {
                 self.registers.set_r16(reg, value);
                 self.registers.pc += 3;
             }
@@ -149,7 +155,7 @@ impl GameBoy {
                 self.registers.set_r8(reg, value);
                 self.registers.pc += 2
             }
-            Instruction::LdhCA => {
+            Instruction::LdhCmemA => {
                 let target_address = 0xFF00 + self.registers.c as u16;
                 self.set_memory_byte(target_address, self.registers.a);
                 self.registers.pc += 1
@@ -192,13 +198,13 @@ impl GameBoy {
                 self.set_r8_byte(dest, self.get_r8_byte(src));
                 self.registers.pc += 1
             }
-            Instruction::LdhImm8A(addr) => {
+            Instruction::LdhImm8memA(addr) => {
                 let target_address = 0xFF00 + addr as u16;
                 self.set_memory_byte(target_address, self.get_r8_byte(R8::A));
 
                 self.registers.pc += 2
             }
-            Instruction::LdhAImm8(addr) => {
+            Instruction::LdhAImm8mem(addr) => {
                 let target_address = 0xFF00 + addr as u16;
                 self.registers.a = self.get_memory_byte(target_address);
                 self.registers.pc += 2
@@ -276,12 +282,13 @@ impl GameBoy {
 
                 self.registers.pc += 1;
             }
-            Instruction::LdImm16A(addr) => {
+            Instruction::LdImm16memA(addr) => {
                 self.registers.a = self.get_memory_byte(addr);
                 self.registers.pc += 3;
             }
 
             _ => {
+                println!("{}", self.format_instruction());
                 dbg!(self);
                 todo!();
             }
@@ -298,14 +305,11 @@ impl GameBoy {
 
     pub fn format_instruction(&self) -> String {
         format!(
-            "{:#06X}: \x1b[0;31m{}\x1b[0m",
+            "{:#06X}: {}, {:?}",
             self.registers.pc,
+            self.ins(),
             self.ins()
         )
-    }
-
-    pub fn rom_header(&self) -> GBCHeader {
-        GBCHeader::new(&self.rom_data).unwrap()
     }
 
     fn get_r8_byte(&self, reg: R8) -> u8 {

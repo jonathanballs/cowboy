@@ -45,7 +45,7 @@ impl PPU {
     pub fn get_byte(&self, addr: u16) -> u8 {
         match addr {
             0xFF40 => self.lcdc,
-            0xFF42 => dbg!(self.scy),
+            0xFF42 => self.scy,
             0xFF43 => self.scx,
             0xFF44 => self.line,
             0xFF47 => self.bgp,
