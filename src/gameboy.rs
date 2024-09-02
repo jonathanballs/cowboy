@@ -1,4 +1,4 @@
-use std::{fmt, usize};
+use std::{fmt, thread::sleep_ms, usize};
 
 use crate::{
     bootrom::BOOT_ROM,
@@ -10,7 +10,7 @@ use crate::{
 pub struct GameBoy {
     pub registers: Registers,
     pub rom_data: Vec<u8>,
-    pub ram: Vec<u8>,
+    pub ram: [u8; 0xFFFF],
 }
 
 impl GameBoy {
@@ -18,7 +18,7 @@ impl GameBoy {
         GameBoy {
             registers: Registers::new(),
             rom_data,
-            ram: vec![0; 0x8000],
+            ram: [0x0; 0xFFFF],
         }
     }
 
@@ -76,7 +76,7 @@ impl GameBoy {
     }
 
     pub fn step(&mut self) {
-        println!("{}", self.format_instruction());
+        //println!("{}", self.format_instruction());
         let opcode = self.ins();
 
         match opcode {
@@ -262,6 +262,10 @@ impl GameBoy {
             self.registers.pc,
             self.ins()
         )
+    }
+
+    pub fn rom_header(&self) -> GBCHeader {
+        GBCHeader::new(&self.rom_data).unwrap()
     }
 
     fn get_r8_byte(&self, reg: R8) -> u8 {
