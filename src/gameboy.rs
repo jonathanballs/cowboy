@@ -1,6 +1,7 @@
 use core::panic;
 use std::{
     fmt,
+    sync::mpsc::Sender,
     thread::{sleep, sleep_ms},
     usize,
 };
@@ -8,7 +9,7 @@ use std::{
 use crate::{
     bootrom::BOOT_ROM,
     instructions::{parse, r16::R16, r8::R8, Instruction},
-    ppu::PPU,
+    ppu::{PPUState, PPU},
     registers::Registers,
     rom::GBCHeader,
 };
@@ -21,12 +22,12 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new(rom_data: Vec<u8>) -> GameBoy {
+    pub fn new(rom_data: Vec<u8>, tx: Sender<PPUState>) -> GameBoy {
         GameBoy {
             registers: Registers::new(),
             rom_data,
             ram: [0x0; 0xFFFF],
-            ppu: PPU::new(),
+            ppu: PPU::new(tx),
         }
     }
 
@@ -98,18 +99,18 @@ impl GameBoy {
 
     pub fn step(&mut self) {
         let opcode = self.ins();
-        self.ppu.do_cycle(1);
+        self.ppu.do_cycle(3);
 
-        println!("{}", self.format_instruction());
-        if self.registers.pc == 0x34 {
-            dbg!(&self);
+        //println!("{}", self.format_instruction());
+        if self.registers.pc == 0x6a {
+            //dbg!(&self.ppu);
 
-            for i in 0..128 {
-                let mem_start = i * 16;
-                println!("{} {:x?}", i, &self.ram[mem_start..mem_start + 16]);
-            }
-            panic!("sorry");
-            sleep_ms(1000);
+            //for i in 0..128 {
+            //    let mem_start = i * 16;
+            //    println!("{} {:x?}", i, &self.ram[mem_start..mem_start + 16]);
+            //}
+            //panic!("sorry");
+            //sleep_ms(1000);
         }
 
         match opcode {

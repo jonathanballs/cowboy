@@ -59,6 +59,7 @@ impl fmt::Display for Instruction {
                 // Registers
                 "r8" => args.pop().unwrap().cyan().to_string(),
                 "r16" => args.pop().unwrap().cyan().to_string(),
+                "r16stk" => args.pop().unwrap().cyan().to_string(),
                 "a" => "a".cyan().to_string(),
 
                 // Memory address
