@@ -1,15 +1,9 @@
-use core::panic;
-use std::{
-    fmt,
-    sync::mpsc::Sender,
-    thread::{sleep, sleep_ms},
-    usize,
-};
+use std::{fmt, sync::mpsc::Sender, usize};
 
 use crate::{
     bootrom::BOOT_ROM,
     instructions::{parse, r16::R16, r8::R8, Instruction},
-    ppu::{PPUState, PPU},
+    ppu::PPU,
     registers::Registers,
     rom::GBCHeader,
 };
@@ -22,7 +16,7 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new(rom_data: Vec<u8>, tx: Sender<PPUState>) -> GameBoy {
+    pub fn new(rom_data: Vec<u8>, tx: Sender<PPU>) -> GameBoy {
         GameBoy {
             registers: Registers::new(),
             rom_data,
@@ -32,6 +26,7 @@ impl GameBoy {
     }
 
     pub fn get_memory_byte(&self, addr: u16) -> u8 {
+        // Reference: https://gbdev.io/pandocs/Memory_Map.html
         match addr {
             // Boot Rom
             0x0..=0xFF => BOOT_ROM[addr as usize],
@@ -39,13 +34,25 @@ impl GameBoy {
             // Cartridge Rom
             0x100..=0x7FFF => *self.rom_data.get(addr as usize).unwrap_or(&0),
 
-            // Internal Ram
-            0x8000..=0xFEFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+            // VRAM
+            0x8000..=0x9FFF => self.ppu.get_byte(addr),
 
-            // PPU
+            // External RAM
+            0xA000..=0xBFFF => todo!(),
+
+            // Work RAM
+            0xC000..=0xDFFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+
+            // Echo RAM
+            // In theory this maps to 0xC000..=0xDDFF but since it's not really used in practice
+            // it's probably better to treat this as a canary which throws when something's gone
+            // wrong!
+            0xE000..=0xFDFF => unreachable!(),
+
+            // Delegate OAM and I/O Registers to PPU
             0xFE00..=0xFF7F => self.ppu.get_byte(addr),
 
-            // Internal HRam
+            // HRam
             0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
 
             // Else
@@ -60,12 +67,22 @@ impl GameBoy {
         match addr {
             0x0..=0x7FFF => todo!(),
 
-            0x8000..=0xFEFF => self.ram[(addr - 0x8000) as usize] = byte,
+            // VRAM
+            0x8000..=0x9FFF => self.ppu.set_byte(addr, byte),
 
-            0xFF10..=0xFF26 => return, // Ignore sound
+            // External RAM
+            0xA000..=0xBFFF => todo!(),
 
-            0xFF40..=0xFF7F => self.ppu.set_byte(addr, byte),
+            // Work RAM
+            0x8000..=0xDFFF => self.ppu.set_byte(addr, byte),
 
+            // Echo RAM
+            0xE000..=0xFDFF => unreachable!(),
+
+            // Delegate OAM and I/O Registers to PPU
+            0xFE00..=0xFF7F => self.ppu.set_byte(addr, byte),
+
+            // HRam
             0xFF80..=0xFFFE => self.ram[(addr - 0x8000) as usize] = byte,
 
             _ => {
