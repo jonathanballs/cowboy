@@ -9,18 +9,11 @@ use std::fs::File;
 use std::io::Read;
 use std::thread;
 
+use gameboy::GameBoy;
 use minifb::{Key, Window, WindowOptions};
 
 const WIDTH: usize = 160 * 4;
 const HEIGHT: usize = 144 * 4;
-
-use gameboy::GameBoy;
-
-// Shared state between emulator and graphics threads
-struct SharedState {
-    frame_buffer: Vec<u32>,
-    is_running: bool,
-}
 
 fn read_file_to_bytes(filename: &str) -> Result<Vec<u8>, std::io::Error> {
     let mut file = File::open(filename)?;
@@ -63,7 +56,7 @@ fn main() {
     let emulator_loop = thread::spawn(move || {
         emulator_loop();
     });
-    window_loop();
+    //window_loop();
 
     let _ = emulator_loop.join();
 }

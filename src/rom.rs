@@ -83,7 +83,7 @@ impl fmt::Debug for GBCHeader {
             .field("cartridge_type", &self.cartridge_type_name())
             .field("rom_size", &self.rom_size_str())
             .field("ram_size", &self.ram_size_str())
-            .field("checksum", &self.validate_header_checksum())
+            .field("checksum_valid?", &self.validate_header_checksum())
             .finish()
     }
 }

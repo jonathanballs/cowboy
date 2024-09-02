@@ -1,8 +1,14 @@
-use std::{fmt, thread::sleep_ms, usize};
+use core::panic;
+use std::{
+    fmt,
+    thread::{sleep, sleep_ms},
+    usize,
+};
 
 use crate::{
     bootrom::BOOT_ROM,
     instructions::{parse, r16::R16, r8::R8, Instruction},
+    ppu::PPU,
     registers::Registers,
     rom::GBCHeader,
 };
@@ -11,6 +17,7 @@ pub struct GameBoy {
     pub registers: Registers,
     pub rom_data: Vec<u8>,
     pub ram: [u8; 0xFFFF],
+    pub ppu: PPU,
 }
 
 impl GameBoy {
@@ -19,6 +26,7 @@ impl GameBoy {
             registers: Registers::new(),
             rom_data,
             ram: [0x0; 0xFFFF],
+            ppu: PPU::new(),
         }
     }
 
@@ -33,8 +41,8 @@ impl GameBoy {
             // Internal Ram
             0x8000..=0xFEFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
 
-            // LCD Y Register
-            0xFF44 => 0x90, // Let's just set it during the VBLANK period for now...
+            // PPU
+            0xFE00..=0xFF7F => self.ppu.get_byte(addr),
 
             // Internal HRam
             0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
@@ -50,7 +58,20 @@ impl GameBoy {
     pub fn set_memory_byte(&mut self, addr: u16, byte: u8) {
         match addr {
             0x0..=0x7FFF => todo!(),
-            0x8000..=0xFFFF => self.ram[(addr - 0x8000) as usize] = byte,
+
+            0x8000..=0xFEFF => self.ram[(addr - 0x8000) as usize] = byte,
+
+            0xFF10..=0xFF26 => return, // Ignore sound
+
+            0xFF40..=0xFF7F => self.ppu.set_byte(addr, byte),
+
+            0xFF80..=0xFFFE => self.ram[(addr - 0x8000) as usize] = byte,
+
+            _ => {
+                dbg!(addr);
+                dbg!(byte);
+                todo!()
+            }
         }
     }
 
@@ -76,8 +97,14 @@ impl GameBoy {
     }
 
     pub fn step(&mut self) {
-        //println!("{}", self.format_instruction());
         let opcode = self.ins();
+        self.ppu.do_cycle(1);
+
+        //println!("{}", self.format_instruction());
+        //if self.registers.pc == 0x89 {
+        //    dbg!(&self);
+        //    sleep_ms(1000);
+        //}
 
         match opcode {
             Instruction::Nop => self.registers.pc += 1,
@@ -166,8 +193,14 @@ impl GameBoy {
                 self.registers.pc += 1
             }
             Instruction::LdhImm8A(addr) => {
-                let value = self.get_memory_byte(0xFF + addr as u16);
-                self.set_r8_byte(R8::A, value);
+                let target_address = 0xFF00 + addr as u16;
+                self.set_memory_byte(target_address, self.get_r8_byte(R8::A));
+
+                self.registers.pc += 2
+            }
+            Instruction::LdhAImm8(addr) => {
+                let target_address = 0xFF00 + addr as u16;
+                self.registers.a = self.get_memory_byte(target_address);
                 self.registers.pc += 2
             }
             Instruction::LdAR16mem(reg) => {
@@ -231,14 +264,21 @@ impl GameBoy {
 
                 self.registers.pc += 2;
             }
+            Instruction::SubAR8(reg) => {
+                let value = self.get_r8_byte(reg);
+                let result = self.registers.a.wrapping_sub(value);
+                self.registers.a = result;
+
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = value > self.registers.a;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
+                self.registers.f.subtract = true;
+
+                self.registers.pc += 1;
+            }
             Instruction::LdImm16A(addr) => {
                 self.registers.a = self.get_memory_byte(addr);
                 self.registers.pc += 3;
-            }
-            Instruction::LdhAImm8(value) => {
-                let target_address = 0xFF00 + value as u16;
-                self.registers.a = self.get_memory_byte(target_address);
-                self.registers.pc += 2
             }
 
             _ => {
