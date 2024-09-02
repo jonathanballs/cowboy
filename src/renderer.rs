@@ -3,8 +3,8 @@ use std::sync::mpsc::Receiver;
 
 use crate::ppu::{Tile, PPU};
 
-const WIDTH: usize = 160;
-const HEIGHT: usize = 144;
+const WIDTH: usize = 256;
+const HEIGHT: usize = 256;
 
 fn palette(id: u8) -> u32 {
     match id {
@@ -32,7 +32,7 @@ pub fn window_loop(rx: Receiver<PPU>) {
         WIDTH,
         HEIGHT,
         WindowOptions {
-            scale: Scale::X4,
+            scale: Scale::X2,
             ..WindowOptions::default()
         },
     )
@@ -49,8 +49,17 @@ pub fn window_loop(rx: Receiver<PPU>) {
         // Receive frame buffer from the emulator
         match rx.recv() {
             Ok(ppu) => {
-                for i in 0..128 {
-                    render_tile(ppu.get_tile(i), &mut buffer, ((i * 8) % 128), (i / 16) * 8)
+                //println!("{}", ppu.get_byte(0x9910));
+
+                for i in 0..1024 {
+                    let tile_index = ppu.get_byte(0x9800 + i);
+
+                    render_tile(
+                        ppu.get_tile(tile_index as usize),
+                        &mut buffer,
+                        (i as usize * 8) % 256,
+                        (i as usize / 32) * 8,
+                    )
                 }
             }
             _ => (),

@@ -1,3 +1,4 @@
+use colored::*;
 use std::{fmt, sync::mpsc::Sender, usize};
 
 use crate::{
@@ -118,8 +119,8 @@ impl GameBoy {
         let opcode = self.ins();
         self.ppu.do_cycle(3);
 
-        //println!("{}", self.format_instruction());
-        if self.registers.pc == 0x6a {
+        if self.registers.pc == 0x42 {
+            println!("{}", self.format_instruction());
             //dbg!(&self.ppu);
 
             //for i in 0..128 {
@@ -301,13 +302,13 @@ impl GameBoy {
                 self.registers.pc += 1;
             }
             Instruction::LdImm16memA(addr) => {
-                self.registers.a = self.get_memory_byte(addr);
+                self.set_memory_byte(addr, self.get_r8_byte(R8::A));
                 self.registers.pc += 3;
             }
 
             _ => {
+                println!("{}", "Sorry cowboy but it looks like that instruction just ain't \nhandled yet - get back out to the ranch and fix that dang emulator".yellow());
                 println!("{}", self.format_instruction());
-                dbg!(self);
                 todo!();
             }
         };
@@ -323,10 +324,11 @@ impl GameBoy {
 
     pub fn format_instruction(&self) -> String {
         format!(
-            "{:#06X}: {}, {:?}",
+            "{:#06X} {:#04X}: {} ({:X?})",
             self.registers.pc,
+            self.get_memory_byte(self.registers.pc),
             self.ins(),
-            self.ins()
+            self.ins(),
         )
     }
 

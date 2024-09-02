@@ -49,8 +49,7 @@ impl PPU {
                 self.line = (self.line + 1) % 154;
                 if self.line == 0 {
                     self.frame_number += 1;
-                    println!("frame");
-                    self.tx.send(self.clone());
+                    self.tx.send(self.clone()).unwrap();
                 }
             }
         }
