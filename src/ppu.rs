@@ -11,12 +11,12 @@ pub struct PPU {
     frame_number: u32,
     vram: [u8; VRAM_SIZE],
     voam: [u8; VOAM_SIZE],
-    scy: u8,
-    scx: u8,
-    line: u8,
-    lcdc: u8,
-    bgp: u8,
-    modeclock: u32,
+    pub scy: u8,
+    pub scx: u8,
+    pub line: u8,
+    pub lcdc: u8,
+    pub bgp: u8,
+    pub modeclock: u32,
 }
 
 impl PPU {

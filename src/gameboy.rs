@@ -14,11 +14,15 @@ pub struct GameBoy {
     pub rom_data: Vec<u8>,
     pub ram: [u8; 0xFFFF],
     pub ppu: PPU,
+
+    boot_rom_enabled: bool,
 }
 
 impl GameBoy {
     pub fn new(rom_data: Vec<u8>, tx: Sender<PPU>) -> GameBoy {
         GameBoy {
+            boot_rom_enabled: true,
+
             registers: Registers::new(),
             rom_data,
             ram: [0x0; 0xFFFF],
@@ -26,102 +30,15 @@ impl GameBoy {
         }
     }
 
-    pub fn get_memory_byte(&self, addr: u16) -> u8 {
-        // Reference: https://gbdev.io/pandocs/Memory_Map.html
-        match addr {
-            // Boot Rom
-            0x0..=0xFF => BOOT_ROM[addr as usize],
-
-            // Cartridge Rom
-            0x100..=0x7FFF => *self.rom_data.get(addr as usize).unwrap_or(&0),
-
-            // VRAM
-            0x8000..=0x9FFF => self.ppu.get_byte(addr),
-
-            // External RAM
-            0xA000..=0xBFFF => todo!(),
-
-            // Work RAM
-            0xC000..=0xDFFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
-
-            // Echo RAM
-            // In theory this maps to 0xC000..=0xDDFF but since it's not really used in practice
-            // it's probably better to treat this as a canary which throws when something's gone
-            // wrong!
-            0xE000..=0xFDFF => unreachable!(),
-
-            // Delegate OAM and I/O Registers to PPU
-            0xFE00..=0xFF7F => self.ppu.get_byte(addr),
-
-            // HRam
-            0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
-
-            // Else
-            _ => {
-                dbg!(&self);
-                todo!()
-            }
-        }
-    }
-
-    pub fn set_memory_byte(&mut self, addr: u16, byte: u8) {
-        match addr {
-            0x0..=0x7FFF => todo!(),
-
-            // VRAM
-            0x8000..=0x9FFF => self.ppu.set_byte(addr, byte),
-
-            // External RAM
-            0xA000..=0xBFFF => todo!(),
-
-            // Work RAM
-            0x8000..=0xDFFF => self.ppu.set_byte(addr, byte),
-
-            // Echo RAM
-            0xE000..=0xFDFF => unreachable!(),
-
-            // Delegate OAM and I/O Registers to PPU
-            0xFE00..=0xFF7F => self.ppu.set_byte(addr, byte),
-
-            // HRam
-            0xFF80..=0xFFFE => self.ram[(addr - 0x8000) as usize] = byte,
-
-            _ => {
-                dbg!(addr);
-                dbg!(byte);
-                todo!()
-            }
-        }
-    }
-
-    pub fn set_memory_word(&mut self, addr: u16, word: u16) {
-        let little = (word & 0xFF) as u8;
-        let big = (word >> 8) as u8;
-        self.set_memory_byte(addr, little);
-        self.set_memory_byte(addr + 1, big)
-    }
-
-    pub fn get_memory_word(&mut self, addr: u16) -> u16 {
-        let little = self.get_memory_byte(addr) as u16;
-        let big = self.get_memory_byte(addr + 1) as u16;
-        return (big << 8) | little;
-    }
-
-    pub fn ins(&self) -> Instruction {
-        let opcode = self.get_memory_byte(self.registers.pc);
-        let arg_1 = self.get_memory_byte(self.registers.pc + 1);
-        let arg_2 = self.get_memory_byte(self.registers.pc + 2);
-
-        return parse(opcode, arg_1, arg_2);
-    }
-
     pub fn step(&mut self) {
         let opcode = self.ins();
         self.ppu.do_cycle(3);
 
-        if self.registers.pc == 0x42 {
+        if self.registers.pc == 0xE9 {
             println!("{}", self.format_instruction());
-            //dbg!(&self.ppu);
+            dbg!(&self);
+            dbg!(self.registers.get_r16(R16::HL));
+            dbg!(self.registers.get_r16(R16::DE));
 
             //for i in 0..128 {
             //    let mem_start = i * 16;
@@ -289,9 +206,35 @@ impl GameBoy {
 
                 self.registers.pc += 2;
             }
+            Instruction::CpAR8(reg) => {
+                let value = self.get_r8_byte(reg);
+                let result = self.registers.a.wrapping_sub(value);
+
+                self.registers.f.zero = result == 0;
+                dbg!(value);
+                dbg!(result);
+                dbg!(result == 0);
+                self.registers.f.carry = value > self.registers.a;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
+                self.registers.f.subtract = true;
+
+                self.registers.pc += 1;
+            }
             Instruction::SubAR8(reg) => {
                 let value = self.get_r8_byte(reg);
                 let result = self.registers.a.wrapping_sub(value);
+                self.registers.a = result;
+
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = value > self.registers.a;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
+                self.registers.f.subtract = true;
+
+                self.registers.pc += 1;
+            }
+            Instruction::AddAR8(reg) => {
+                let value = self.get_r8_byte(reg);
+                let result = self.registers.a.wrapping_add(value);
                 self.registers.a = result;
 
                 self.registers.f.zero = result == 0;
@@ -310,8 +253,109 @@ impl GameBoy {
                 println!("{}", "Sorry cowboy but it looks like that instruction just ain't \nhandled yet - get back out to the ranch and fix that dang emulator".yellow());
                 println!("{}", self.format_instruction());
                 todo!();
+                //self.registers.pc += 1;
             }
         };
+    }
+
+    pub fn ins(&self) -> Instruction {
+        let opcode = self.get_memory_byte(self.registers.pc);
+        let arg_1 = self.get_memory_byte(self.registers.pc + 1);
+        let arg_2 = self.get_memory_byte(self.registers.pc + 2);
+
+        return parse(opcode, arg_1, arg_2);
+    }
+
+    pub fn get_memory_byte(&self, addr: u16) -> u8 {
+        // Reference: https://gbdev.io/pandocs/Memory_Map.html
+        match addr {
+            // Boot Rom
+            0x0..=0xFF => {
+                if self.boot_rom_enabled {
+                    BOOT_ROM[addr as usize]
+                } else {
+                    *self.rom_data.get(addr as usize).unwrap_or(&0)
+                }
+            }
+
+            // Cartridge Rom
+            0x100..=0x7FFF => *self.rom_data.get(addr as usize).unwrap_or(&0),
+
+            // VRAM
+            0x8000..=0x9FFF => self.ppu.get_byte(addr),
+
+            // External RAM
+            0xA000..=0xBFFF => {
+                todo!()
+            }
+
+            // Work RAM
+            0xC000..=0xDFFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+
+            // Echo RAM
+            // In theory this maps to 0xC000..=0xDDFF but since it's not really used in practice
+            // it's probably better to treat this as a canary which throws when something's gone
+            // wrong!
+            0xE000..=0xFDFF => unreachable!(),
+
+            // Delegate OAM and I/O Registers to PPU
+            0xFE00..=0xFF7F => self.ppu.get_byte(addr),
+
+            // HRam
+            0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+
+            // Else
+            _ => {
+                dbg!(&self);
+                todo!()
+            }
+        }
+    }
+
+    pub fn set_memory_byte(&mut self, addr: u16, byte: u8) {
+        match addr {
+            0x0..=0x7FFF => todo!(),
+
+            // VRAM
+            0x8000..=0x9FFF => self.ppu.set_byte(addr, byte),
+
+            // External RAM
+            0xA000..=0xBFFF => todo!(),
+
+            // Work RAM
+            0x8000..=0xDFFF => self.ram[addr as usize - 0x8000] = byte,
+
+            // Echo RAM
+            0xE000..=0xFDFF => unreachable!(),
+
+            // Enable/disable boot rom
+            0xFF50 => self.boot_rom_enabled = byte != 0,
+
+            // Delegate OAM and I/O Registers to PPU
+            0xFE00..=0xFF7F => self.ppu.set_byte(addr, byte),
+
+            // HRam
+            0xFF80..=0xFFFE => self.ram[(addr - 0x8000) as usize] = byte,
+
+            _ => {
+                dbg!(addr);
+                dbg!(byte);
+                todo!()
+            }
+        }
+    }
+
+    pub fn set_memory_word(&mut self, addr: u16, word: u16) {
+        let little = (word & 0xFF) as u8;
+        let big = (word >> 8) as u8;
+        self.set_memory_byte(addr, little);
+        self.set_memory_byte(addr + 1, big)
+    }
+
+    pub fn get_memory_word(&mut self, addr: u16) -> u16 {
+        let little = self.get_memory_byte(addr) as u16;
+        let big = self.get_memory_byte(addr + 1) as u16;
+        return (big << 8) | little;
     }
 
     fn relative_jump(&mut self, distance: i8) {

@@ -63,7 +63,7 @@ impl fmt::Display for Instruction {
                 "a" => "a".cyan().to_string(),
 
                 // Memory address
-                "r16mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
+                "r16mem" => format!("{}", args.pop().unwrap()).blue().to_string(),
                 "imm8mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
                 "imm16mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
 

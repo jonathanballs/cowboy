@@ -3,8 +3,8 @@ use std::sync::mpsc::Receiver;
 
 use crate::ppu::{Tile, PPU};
 
-const WIDTH: usize = 256;
-const HEIGHT: usize = 256;
+const WIDTH: usize = 160;
+const HEIGHT: usize = 144;
 
 fn palette(id: u8) -> u32 {
     match id {
@@ -19,7 +19,14 @@ fn palette(id: u8) -> u32 {
 fn render_tile(tile: Tile, buffer: &mut Vec<u32>, x: usize, y: usize) {
     for tile_y in 0..8 {
         for tile_x in 0..8 {
-            buffer[((y + tile_y) * WIDTH) + x + tile_x] = palette(tile[tile_x][tile_y]);
+            let x_offset = x + tile_x;
+            let y_offset = y.wrapping_add(tile_y).wrapping_mul(WIDTH);
+
+            if x_offset >= WIDTH || y.wrapping_add(tile_y) >= HEIGHT {
+                continue;
+            }
+
+            buffer[y_offset + x_offset] = palette(tile[tile_x][tile_y]);
         }
     }
 }
@@ -32,7 +39,7 @@ pub fn window_loop(rx: Receiver<PPU>) {
         WIDTH,
         HEIGHT,
         WindowOptions {
-            scale: Scale::X2,
+            scale: Scale::X4,
             ..WindowOptions::default()
         },
     )
@@ -49,8 +56,6 @@ pub fn window_loop(rx: Receiver<PPU>) {
         // Receive frame buffer from the emulator
         match rx.recv() {
             Ok(ppu) => {
-                //println!("{}", ppu.get_byte(0x9910));
-
                 for i in 0..1024 {
                     let tile_index = ppu.get_byte(0x9800 + i);
 
@@ -58,7 +63,7 @@ pub fn window_loop(rx: Receiver<PPU>) {
                         ppu.get_tile(tile_index as usize),
                         &mut buffer,
                         (i as usize * 8) % 256,
-                        (i as usize / 32) * 8,
+                        ((i as usize / 32) * 8).wrapping_sub(ppu.scy as usize),
                     )
                 }
             }
