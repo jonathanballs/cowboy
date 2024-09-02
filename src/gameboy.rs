@@ -33,17 +33,17 @@ impl GameBoy {
             // Internal Ram
             0x8000..=0xFEFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
 
-            // I/O Registers
-            0xFF00..=0xFF7F => {
-                dbg!(&self);
-                todo!()
-            }
+            // LCD Y Register
+            0xFF44 => 0x90, // Let's just set it during the VBLANK period for now...
 
             // Internal HRam
             0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
 
-            // Interrupt Register
-            0xFFFF => todo!(),
+            // Else
+            _ => {
+                dbg!(&self);
+                todo!()
+            }
         }
     }
 
