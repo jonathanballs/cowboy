@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 const VRAM_SIZE: usize = 0x2000;
-const VOAM_SIZE: usize = 0xA0;
+//const VOAM_SIZE: usize = 0xA0;
 
 pub type Tile = [[u8; 8]; 8];
 
@@ -10,7 +10,7 @@ pub struct PPU {
     tx: Sender<PPU>,
     frame_number: u32,
     vram: [u8; VRAM_SIZE],
-    voam: [u8; VOAM_SIZE],
+    //voam: [u8; VOAM_SIZE],
     pub scy: u8,
     pub scx: u8,
     pub line: u8,
@@ -30,7 +30,7 @@ impl PPU {
             modeclock: 32,
             frame_number: 1,
             vram: [0; VRAM_SIZE],
-            voam: [0; VOAM_SIZE],
+            //voam: [0; VOAM_SIZE],
             tx,
         }
     }

@@ -11,266 +11,240 @@ use r16mem::R16mem;
 use r16stk::R16stk;
 use r8::R8;
 
-pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> Instruction {
+pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u8, u8) {
     let imm16: u16 = (arg2 as u16) << 8 | arg1 as u16;
     let imm8: u8 = arg1;
 
-    // Block 0
-    if opcode == 0x00 {
-        return Instruction::Nop;
-    }
+    return match opcode {
+        // Block 0
+        0x00 => (Instruction::Nop, 1, 4),
+        0x01 => (Instruction::LdR16Imm16mem(R16::BC, imm16), 3, 12),
+        0x02 => (Instruction::LdR16memA(R16mem::BC), 1, 8),
+        0x03 => (Instruction::IncR16(R16::BC), 1, 8),
+        0x04 => (Instruction::IncR8(R8::B), 1, 4),
+        0x05 => (Instruction::IncR8(R8::B), 1, 4),
+        0x06 => (Instruction::LdR8Imm8(R8::B, imm8), 2, 8),
+        0x07 => (Instruction::Rlca, 1, 4),
+        0x08 => (Instruction::LdImm16memSp(imm16), 3, 20),
+        0x09 => (Instruction::AddHlR16(R16::BC), 1, 8),
+        0x0A => (Instruction::LdAR16mem(R16mem::BC), 1, 8),
+        0x0B => (Instruction::DecR16(R16::BC), 1, 8),
+        0x0C => (Instruction::IncR8(R8::C), 1, 4),
+        0x0D => (Instruction::DecR8(R8::C), 1, 4),
+        0x0E => (Instruction::LdR8Imm8(R8::C, imm8), 2, 8),
+        0x0F => (Instruction::Rrca, 1, 4),
+        0x10 => (Instruction::Stop, 2, 4),
+        0x11 => (Instruction::LdR16Imm16mem(R16::DE, imm16), 3, 12),
+        0x12 => (Instruction::LdR16memA(R16mem::DE), 1, 8),
+        0x13 => (Instruction::IncR16(R16::DE), 1, 8),
+        0x14 => (Instruction::IncR8(R8::D), 1, 4),
+        0x15 => (Instruction::IncR8(R8::D), 1, 4),
+        0x16 => (Instruction::LdR8Imm8(R8::D, imm8), 2, 8),
+        0x17 => (Instruction::Rla, 1, 4),
+        0x18 => (Instruction::JrImm8(imm8), 2, 12),
+        0x19 => (Instruction::AddHlR16(R16::DE), 1, 8),
+        0x1A => (Instruction::LdAR16mem(R16mem::DE), 1, 8),
+        0x1B => (Instruction::DecR16(R16::DE), 1, 8),
+        0x1C => (Instruction::IncR8(R8::E), 1, 4),
+        0x1D => (Instruction::DecR8(R8::E), 1, 4),
+        0x1E => (Instruction::LdR8Imm8(R8::E, imm8), 2, 8),
+        0x1F => (Instruction::Rra, 1, 4),
+        0x20 => (Instruction::JrCondImm8(Cond::NZ, imm8), 2, 8),
+        0x21 => (Instruction::LdR16Imm16mem(R16::HL, imm16), 3, 12),
+        0x22 => (Instruction::LdR16memA(R16mem::HLI), 1, 8),
+        0x23 => (Instruction::IncR16(R16::HL), 1, 8),
+        0x24 => (Instruction::IncR8(R8::H), 1, 4),
+        0x25 => (Instruction::IncR8(R8::H), 1, 4),
+        0x26 => (Instruction::LdR8Imm8(R8::H, imm8), 2, 8),
+        0x27 => (Instruction::Daa, 1, 4),
+        0x28 => (Instruction::JrCondImm8(Cond::Z, imm8), 2, 8),
+        0x29 => (Instruction::AddHlR16(R16::HL), 1, 8),
+        0x2A => (Instruction::LdAR16mem(R16mem::HLI), 1, 8),
+        0x2B => (Instruction::DecR16(R16::HL), 1, 8),
+        0x2C => (Instruction::IncR8(R8::L), 1, 4),
+        0x2D => (Instruction::DecR8(R8::L), 1, 4),
+        0x2E => (Instruction::LdR8Imm8(R8::L, imm8), 2, 8),
+        0x30 => (Instruction::JrCondImm8(Cond::NC, imm8), 2, 8),
+        0x31 => (Instruction::LdR16Imm16mem(R16::SP, imm16), 3, 12),
+        0x32 => (Instruction::LdR16memA(R16mem::HLD), 1, 8),
+        0x33 => (Instruction::IncR16(R16::SP), 1, 8),
+        0x34 => (Instruction::IncR8(R8::HL), 1, 12),
+        0x35 => (Instruction::DecR8(R8::HL), 1, 12),
+        0x36 => (Instruction::LdR8Imm8(R8::HL, imm8), 2, 8),
+        0x37 => (Instruction::Scf, 1, 4),
+        0x38 => (Instruction::JrCondImm8(Cond::C, imm8), 2, 8),
+        0x39 => (Instruction::AddHlR16(R16::SP), 1, 8),
+        0x3A => (Instruction::LdAR16mem(R16mem::HLD), 1, 8),
+        0x3B => (Instruction::DecR16(R16::SP), 1, 8),
+        0x3C => (Instruction::IncR8(R8::A), 1, 4),
+        0x3D => (Instruction::DecR8(R8::A), 1, 4),
+        0x3E => (Instruction::LdR8Imm8(R8::A, imm8), 2, 8),
 
-    if opcode == 0x10 {
-        return Instruction::Stop;
-    }
+        // Block 1
+        0x76 => (Instruction::Halt, 1, 4),
+        0x40..=0x7f => match (R8::from(opcode), R8::from(opcode >> 3)) {
+            (R8::HL, R8::HL) => (Instruction::Halt, 1, 4),
+            (R8::HL, source) => (Instruction::LdR8R8(R8::HL, source), 1, 8),
+            (destin, R8::HL) => (Instruction::LdR8R8(destin, R8::HL), 1, 8),
+            (destin, source) => (Instruction::LdR8R8(destin, source), 1, 4),
+        },
 
-    if opcode & 0xCF == 0x01 {
-        let dest = (opcode >> 4) & 0x03;
-        return Instruction::LdR16Imm16mem(R16::from(dest), imm16);
-    }
+        // Block 2
+        0x80..=0xBF => {
+            let operand = R8::from(opcode & 0x7);
+            let cycle_count = match operand {
+                R8::HL => 8,
+                _ => 4,
+            };
 
-    if opcode & 0xCF == 0x02 {
-        let dest = (opcode >> 4) & 0x03;
-        return Instruction::LdR16memA(R16mem::from(dest));
-    }
-
-    if opcode & 0xCF == 0x0A {
-        let src = (opcode >> 4) & 0x03;
-        return Instruction::LdAR16mem(R16mem::from(src));
-    }
-
-    if opcode & 0xFF == 0x08 {
-        return Instruction::LdImm16memSp(imm16);
-    }
-
-    if opcode & 0xCF == 0x03 {
-        let operand = (opcode >> 4) & 0x03;
-        return Instruction::IncR16(R16::from(operand));
-    }
-
-    if opcode & 0xCF == 0x0B {
-        let operand = (opcode >> 4) & 0x03;
-        return Instruction::DecR16(R16::from(operand));
-    }
-
-    if opcode & 0xCF == 0x09 {
-        let operand = (opcode >> 4) & 0x03;
-        return Instruction::AddHlR16(R16::from(operand));
-    }
-
-    if opcode & 0xC7 == 0x4 {
-        let operand = (opcode >> 3) & 0x07;
-        return Instruction::IncR8(R8::from(operand));
-    }
-
-    if opcode & 0xC7 == 0x5 {
-        let operand = (opcode >> 3) & 0x07;
-        return Instruction::DecR8(R8::from(operand));
-    }
-
-    if opcode & 0xC7 == 0x6 {
-        let operand = (opcode >> 3) & 0x07;
-        return Instruction::LdR8Imm8(R8::from(operand), imm8);
-    }
-
-    if opcode == 0x07 {
-        return Instruction::Rlca;
-    }
-
-    if opcode == 0x0F {
-        return Instruction::Rrca;
-    }
-
-    if opcode == 0x17 {
-        return Instruction::Rla;
-    }
-
-    if opcode == 0x1F {
-        return Instruction::Rra;
-    }
-
-    if opcode == 0x27 {
-        return Instruction::Daa;
-    }
-
-    if opcode == 0x2F {
-        return Instruction::Cpl;
-    }
-
-    if opcode == 0x37 {
-        return Instruction::Scf;
-    }
-
-    if opcode == 0x3F {
-        return Instruction::Ccf;
-    }
-
-    if opcode == 0x18 {
-        return Instruction::JrImm8(imm8);
-    }
-
-    if (opcode & 0xE7) == 0x20 {
-        return Instruction::JrCondImm8(Cond::from(opcode >> 3), imm8);
-    }
-
-    // Block 1
-    if opcode == 0x76 {
-        return Instruction::Halt;
-    }
-
-    if opcode & 0xC0 == 0x40 {
-        let src = R8::from(opcode);
-        let dest = R8::from(opcode >> 3);
-        return Instruction::LdR8R8(dest, src);
-    }
-
-    // Block 2
-    if opcode & 0xC0 == 0x80 {
-        let operand = R8::from(opcode & 0x7);
-        return match (opcode >> 3) & 0x7 {
-            0 => Instruction::AddAR8(operand),
-            1 => Instruction::AdcAR8(operand),
-            2 => Instruction::SubAR8(operand),
-            3 => Instruction::SbcAR8(operand),
-            4 => Instruction::AndAR8(operand),
-            5 => Instruction::XorAR8(operand),
-            6 => Instruction::OrAR8(operand),
-            _ => Instruction::CpAR8(operand),
-        };
-    }
-
-    // Block 3
-    assert!(opcode & 0xC0 == 0xC0);
-
-    if opcode & 0x7 == 0x6 {
-        return match (opcode >> 3) & 0x7 {
-            0 => Instruction::AddAImm8(imm8),
-            1 => Instruction::AdcAImm8(imm8),
-            2 => Instruction::SubAImm8(imm8),
-            3 => Instruction::SbcAImm8(imm8),
-            4 => Instruction::AndAImm8(imm8),
-            5 => Instruction::XorAImm8(imm8),
-            6 => Instruction::OrAImm8(imm8),
-            _ => Instruction::CpAImm8(imm8),
-        };
-    }
-
-    if opcode & 0xE7 == 0xC0 {
-        return Instruction::RetCond(Cond::from((opcode >> 3) & 0x3));
-    }
-
-    if opcode == 0xC9 {
-        return Instruction::Ret;
-    }
-
-    if opcode == 0xD9 {
-        return Instruction::Reti;
-    }
-
-    if opcode & 0xE7 == 0xC2 {
-        return Instruction::JpCondImm16(Cond::from((opcode >> 3) & 0x3), imm16);
-    }
-
-    if opcode == 0xC3 {
-        return Instruction::JpImm16(imm16);
-    }
-
-    if opcode == 0xE9 {
-        return Instruction::JpHl;
-    }
-
-    if opcode & 0xE7 == 0xC4 {
-        return Instruction::CallCondImm16(Cond::from((opcode >> 3) & 0x3), imm16);
-    }
-
-    if opcode == 0xCD {
-        return Instruction::CallImm16(imm16);
-    }
-
-    if opcode & 0xC7 == 0xC7 {
-        return Instruction::RstTgt3((opcode >> 3) & 0x7);
-    }
-
-    if opcode & 0xCF == 0xC1 {
-        return Instruction::PopR16stk(R16stk::from(opcode >> 3));
-    }
-
-    if opcode & 0xCF == 0xC5 {
-        return Instruction::PushR16stk(R16stk::from(opcode >> 3));
-    }
-
-    if opcode == 0xE2 {
-        return Instruction::LdhCmemA;
-    }
-
-    if opcode == 0xE0 {
-        return Instruction::LdhImm8memA(imm8);
-    }
-
-    if opcode == 0xEA {
-        return Instruction::LdImm16memA(imm16);
-    }
-
-    if opcode == 0xF2 {
-        return Instruction::LdhACmem;
-    }
-
-    if opcode == 0xF0 {
-        return Instruction::LdhAImm8mem(imm8);
-    }
-
-    if opcode == 0xFA {
-        return Instruction::LdAImm16mem(imm16);
-    }
-
-    if opcode == 0xE8 {
-        return Instruction::AddSpImm8(imm8);
-    }
-
-    if opcode == 0xF8 {
-        return Instruction::LdHlSpImm8(imm8);
-    }
-
-    if opcode == 0xF9 {
-        return Instruction::LdSpHl;
-    }
-
-    if opcode == 0xF3 {
-        return Instruction::Di;
-    }
-
-    if opcode == 0xFB {
-        return Instruction::Ei;
-    }
-
-    // Prefixed instructions
-    if opcode == 0xCB {
-        let operand = R8::from(arg1 & 0x7);
-
-        if (arg1 & 0xC0) == 0x0 {
-            return match (arg1 & 0x38) >> 3 {
-                0 => Instruction::RlcR8(operand),
-                1 => Instruction::RrcR8(operand),
-                2 => Instruction::RlR8(operand),
-                3 => Instruction::RrR8(operand),
-                4 => Instruction::SlaR8(operand),
-                5 => Instruction::SraR8(operand),
-                6 => Instruction::SwapR8(operand),
-                _ => Instruction::SrlR8(operand),
+            return match (opcode >> 3) & 0x7 {
+                0 => (Instruction::AddAR8(operand), 1, cycle_count),
+                1 => (Instruction::AdcAR8(operand), 1, cycle_count),
+                2 => (Instruction::SubAR8(operand), 1, cycle_count),
+                3 => (Instruction::SbcAR8(operand), 1, cycle_count),
+                4 => (Instruction::AndAR8(operand), 1, cycle_count),
+                5 => (Instruction::XorAR8(operand), 1, cycle_count),
+                6 => (Instruction::OrAR8(operand), 1, cycle_count),
+                _ => (Instruction::CpAR8(operand), 1, cycle_count),
             };
         }
 
-        let bit_index = (arg1 >> 3) & 0x7;
+        // Block 3
+        _ => unreachable!(),
+    };
 
-        return match (arg1 & 0xC0) >> 6 {
-            0x1 => Instruction::BitB3R8(bit_index, operand),
-            0x2 => Instruction::ResB3R8(bit_index, operand),
-            0x3 => Instruction::SetB3R8(bit_index, operand),
-            _ => unreachable!(),
-        };
-    }
-
-    Instruction::ILLEGAL
+    //// Block 3
+    //assert!(opcode & 0xC0 == 0xC0);
+    //
+    //if opcode & 0x7 == 0x6 {
+    //    return match (opcode >> 3) & 0x7 {
+    //        0 => Instruction::AddAImm8(imm8),
+    //        1 => Instruction::AdcAImm8(imm8),
+    //        2 => Instruction::SubAImm8(imm8),
+    //        3 => Instruction::SbcAImm8(imm8),
+    //        4 => Instruction::AndAImm8(imm8),
+    //        5 => Instruction::XorAImm8(imm8),
+    //        6 => Instruction::OrAImm8(imm8),
+    //        _ => Instruction::CpAImm8(imm8),
+    //    };
+    //}
+    //
+    //if opcode & 0xE7 == 0xC0 {
+    //    return Instruction::RetCond(Cond::from((opcode >> 3) & 0x3));
+    //}
+    //
+    //if opcode == 0xC9 {
+    //    return Instruction::Ret;
+    //}
+    //
+    //if opcode == 0xD9 {
+    //    return Instruction::Reti;
+    //}
+    //
+    //if opcode & 0xE7 == 0xC2 {
+    //    return Instruction::JpCondImm16(Cond::from((opcode >> 3) & 0x3), imm16);
+    //}
+    //
+    //if opcode == 0xC3 {
+    //    return Instruction::JpImm16(imm16);
+    //}
+    //
+    //if opcode == 0xE9 {
+    //    return Instruction::JpHl;
+    //}
+    //
+    //if opcode & 0xE7 == 0xC4 {
+    //    return Instruction::CallCondImm16(Cond::from((opcode >> 3) & 0x3), imm16);
+    //}
+    //
+    //if opcode == 0xCD {
+    //    return Instruction::CallImm16(imm16);
+    //}
+    //
+    //if opcode & 0xC7 == 0xC7 {
+    //    return Instruction::RstTgt3((opcode >> 3) & 0x7);
+    //}
+    //
+    //if opcode & 0xCF == 0xC1 {
+    //    return Instruction::PopR16stk(R16stk::from(opcode >> 3));
+    //}
+    //
+    //if opcode & 0xCF == 0xC5 {
+    //    return Instruction::PushR16stk(R16stk::from(opcode >> 3));
+    //}
+    //
+    //if opcode == 0xE2 {
+    //    return Instruction::LdhCmemA;
+    //}
+    //
+    //if opcode == 0xE0 {
+    //    return Instruction::LdhImm8memA(imm8);
+    //}
+    //
+    //if opcode == 0xEA {
+    //    return Instruction::LdImm16memA(imm16);
+    //}
+    //
+    //if opcode == 0xF2 {
+    //    return Instruction::LdhACmem;
+    //}
+    //
+    //if opcode == 0xF0 {
+    //    return Instruction::LdhAImm8mem(imm8);
+    //}
+    //
+    //if opcode == 0xFA {
+    //    return Instruction::LdAImm16mem(imm16);
+    //}
+    //
+    //if opcode == 0xE8 {
+    //    return Instruction::AddSpImm8(imm8);
+    //}
+    //
+    //if opcode == 0xF8 {
+    //    return Instruction::LdHlSpImm8(imm8);
+    //}
+    //
+    //if opcode == 0xF9 {
+    //    return Instruction::LdSpHl;
+    //}
+    //
+    //if opcode == 0xF3 {
+    //    return Instruction::Di;
+    //}
+    //
+    //if opcode == 0xFB {
+    //    return Instruction::Ei;
+    //}
+    //
+    //// Prefixed instructions
+    //if opcode == 0xCB {
+    //    let operand = R8::from(arg1 & 0x7);
+    //
+    //    if (arg1 & 0xC0) == 0x0 {
+    //        return match (arg1 & 0x38) >> 3 {
+    //            0 => Instruction::RlcR8(operand),
+    //            1 => Instruction::RrcR8(operand),
+    //            2 => Instruction::RlR8(operand),
+    //            3 => Instruction::RrR8(operand),
+    //            4 => Instruction::SlaR8(operand),
+    //            5 => Instruction::SraR8(operand),
+    //            6 => Instruction::SwapR8(operand),
+    //            _ => Instruction::SrlR8(operand),
+    //        };
+    //    }
+    //
+    //    let bit_index = (arg1 >> 3) & 0x7;
+    //
+    //    return match (arg1 & 0xC0) >> 6 {
+    //        0x1 => Instruction::BitB3R8(bit_index, operand),
+    //        0x2 => Instruction::ResB3R8(bit_index, operand),
+    //        0x3 => Instruction::SetB3R8(bit_index, operand),
+    //        _ => unreachable!(),
+    //    };
+    //}
+    //
+    //Instruction::ILLEGAL
 }
 
 #[derive(Debug)]
@@ -374,295 +348,63 @@ pub enum Instruction {
 
 #[cfg(test)]
 mod test {
-    use crate::instructions::{parse, Cond, Instruction, R16mem, R16, R8};
+    use serde_json::Value;
+    use std::fs::File;
+    use std::io::Read;
+    use std::path::Path;
 
-    // Block 0
-    #[test]
-    fn nop() {
-        assert!(matches!(parse(0x0, 0x0, 0x0), Instruction::Nop))
-    }
-
-    #[test]
-    fn jp_imm16() {
-        // First instruction of Pokemon Gold :D
-        assert!(matches!(
-            parse(0xC3, 0xC6, 0x5),
-            Instruction::JpImm16(0x05C6)
-        ))
-    }
+    use super::parse;
 
     #[test]
-    fn ld_r16_imm16() {
-        assert!(matches!(
-            parse(0x01, 0xC6, 0x5),
-            Instruction::LdR16Imm16mem(R16::BC, 0x05C6)
-        ));
+    fn opcodes_json() {
+        // Read the JSON file
+        let filename = Path::new(file!())
+            .parent()
+            .unwrap()
+            .join("instructions/opcodes.json");
 
-        assert!(matches!(
-            parse(0x31, 0x0, 0x0),
-            Instruction::LdR16Imm16mem(R16::SP, 0x0)
-        ))
-    }
+        println!("{}", filename.to_string_lossy());
 
-    #[test]
-    fn ld_r16mem_a() {
-        assert!(matches!(
-            parse(0x02, 0x0, 0x0),
-            Instruction::LdR16memA(R16mem::BC)
-        ));
-    }
+        let mut file = File::open(filename).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
 
-    #[test]
-    fn ld_a_r16mem() {
-        assert!(matches!(
-            parse(0xA, 0x0, 0x0),
-            Instruction::LdAR16mem(R16mem::BC)
-        ));
-    }
+        // Parse the JSON
+        let root: Value = serde_json::from_str(&contents).unwrap();
 
-    #[test]
-    fn ld_imm16_sp() {
-        assert!(matches!(
-            parse(0x8, 0x34, 0x12),
-            Instruction::LdImm16memSp(0x1234)
-        ));
-    }
+        // Iterate through each entry in the "unprefixed" object
+        //
+        let unprefixed = root["unprefixed"]
+            .as_object()
+            .ok_or("Failed to find 'unprefixed' object in JSON")
+            .unwrap();
 
-    #[test]
-    fn inc_r16() {
-        assert!(matches!(parse(0x3, 0x0, 0x0), Instruction::IncR16(R16::BC)));
-    }
+        for (opcode, data) in unprefixed {
+            // Parse the opcode string to a u8
+            let opcode_value = u8::from_str_radix(&opcode[2..], 16).unwrap();
 
-    #[test]
-    fn dec_r16() {
-        assert!(matches!(parse(0xB, 0x0, 0x0), Instruction::DecR16(R16::BC)));
-    }
+            // Get the expected values
+            let expected_bytes = data["bytes"].as_u64().unwrap() as u8;
+            let expected_cycles = data["cycles"][0].as_u64().unwrap() as u8;
 
-    #[test]
-    fn add_hl_r16() {
-        assert!(matches!(
-            parse(0x9, 0x0, 0x0),
-            Instruction::AddHlR16(R16::BC)
-        ));
-    }
+            // Call the parse function (you need to implement this)
+            let (_ins, actual_bytes, actual_cycles) = parse(opcode_value, 0x0, 0x0);
 
-    #[test]
-    fn inc_r8() {
-        assert!(matches!(parse(0x4, 0x0, 0x0), Instruction::IncR8(R8::B)));
-    }
+            assert_eq!(
+                expected_bytes,
+                actual_bytes,
+                "{} (opcode: {:#04x})",
+                data["mnemonic"].to_string(),
+                opcode_value
+            );
 
-    #[test]
-    fn dec_r8() {
-        assert!(matches!(parse(0x5, 0x0, 0x0), Instruction::DecR8(R8::B)));
-    }
-
-    #[test]
-    fn ld_r8_imm8() {
-        assert!(matches!(
-            parse(0x6, 0x01, 0x02),
-            Instruction::LdR8Imm8(R8::B, 0x1)
-        ));
-    }
-
-    #[test]
-    fn rlca() {
-        assert!(matches!(parse(0b111, 0x0, 0x0), Instruction::Rlca))
-    }
-
-    #[test]
-    fn rrca() {
-        assert!(matches!(parse(0b1111, 0x0, 0x0), Instruction::Rrca))
-    }
-
-    #[test]
-    fn rla() {
-        assert!(matches!(parse(0b10111, 0x0, 0x0), Instruction::Rla))
-    }
-
-    #[test]
-    fn rra() {
-        assert!(matches!(parse(0b11111, 0x0, 0x0), Instruction::Rra))
-    }
-
-    #[test]
-    fn daa() {
-        assert!(matches!(parse(0b100111, 0x0, 0x0), Instruction::Daa))
-    }
-
-    #[test]
-    fn cpl() {
-        assert!(matches!(parse(0b101111, 0x0, 0x0), Instruction::Cpl))
-    }
-
-    #[test]
-    fn scf() {
-        assert!(matches!(parse(0b110111, 0x0, 0x0), Instruction::Scf))
-    }
-
-    #[test]
-    fn ccf() {
-        assert!(matches!(parse(0b111111, 0x0, 0x0), Instruction::Ccf))
-    }
-
-    #[test]
-    fn jr_imm8() {
-        assert!(matches!(parse(0x18, 0xFF, 0x0), Instruction::JrImm8(0xFF)))
-    }
-
-    #[test]
-    fn jr_cond_imm8() {
-        assert!(matches!(
-            parse(0x20, 0x20, 0x0),
-            Instruction::JrCondImm8(Cond::NZ, 0x20)
-        ))
-    }
-
-    #[test]
-    fn stop() {
-        assert!(matches!(parse(0x10, 0x00, 0x0), Instruction::Stop))
-    }
-
-    // block 1
-    #[test]
-    fn ld_r8_r8() {
-        assert!(matches!(
-            parse(0x61, 0x00, 0x0),
-            Instruction::LdR8R8(R8::H, R8::C)
-        ))
-    }
-
-    #[test]
-    fn halt() {
-        assert!(matches!(parse(0b01110110, 0x0, 0x0), Instruction::Halt))
-    }
-
-    // Block 2
-    #[test]
-    fn add_a_r8() {
-        assert!(matches!(
-            parse(0b10000000, 0x0, 0x0),
-            Instruction::AddAR8(R8::B)
-        ))
-    }
-
-    #[test]
-    fn adc_a_r8() {
-        assert!(matches!(
-            parse(0b10001000, 0x0, 0x0),
-            Instruction::AdcAR8(R8::B)
-        ))
-    }
-
-    #[test]
-    fn sub_a_r8() {
-        assert!(matches!(
-            parse(0b10010000, 0x0, 0x0),
-            Instruction::SubAR8(R8::B)
-        ))
-    }
-
-    #[test]
-    fn sbc_a_r8() {
-        assert!(matches!(
-            parse(0b10011000, 0x0, 0x0),
-            Instruction::SbcAR8(R8::B)
-        ))
-    }
-
-    #[test]
-    fn and_a_r8() {
-        assert!(matches!(
-            parse(0b10100000, 0x0, 0x0),
-            Instruction::AndAR8(R8::B)
-        ))
-    }
-
-    #[test]
-    fn xor_a_r8() {
-        assert!(matches!(
-            parse(0b10101000, 0x0, 0x0),
-            Instruction::XorAR8(R8::B)
-        ))
-    }
-
-    #[test]
-    fn or_a_r8() {
-        assert!(matches!(
-            parse(0b10110000, 0x0, 0x0),
-            Instruction::OrAR8(R8::B)
-        ))
-    }
-
-    #[test]
-    fn cp_a_r8() {
-        assert!(matches!(
-            parse(0b10111000, 0x0, 0x0),
-            Instruction::CpAR8(R8::B)
-        ))
-    }
-
-    // Block 3
-    #[test]
-    fn add_a_imm8() {
-        assert!(matches!(
-            parse(0b11000110, 0x1, 0x0),
-            Instruction::AddAImm8(0x1)
-        ))
-    }
-
-    #[test]
-    fn adc_a_imm8() {
-        assert!(matches!(
-            parse(0b11001110, 0x1, 0x0),
-            Instruction::AdcAImm8(0x1)
-        ))
-    }
-
-    #[test]
-    fn sub_a_imm8() {
-        assert!(matches!(
-            parse(0b11010110, 0x1, 0x0),
-            Instruction::SubAImm8(0x1)
-        ))
-    }
-
-    #[test]
-    fn sbc_a_imm8() {
-        assert!(matches!(
-            parse(0b11011110, 0x1, 0x0),
-            Instruction::SbcAImm8(0x1)
-        ))
-    }
-
-    #[test]
-    fn and_a_imm8() {
-        assert!(matches!(
-            parse(0b11100110, 0x1, 0x0),
-            Instruction::AndAImm8(0x1)
-        ))
-    }
-
-    #[test]
-    fn xor_a_imm8() {
-        assert!(matches!(
-            parse(0b11101110, 0x1, 0x0),
-            Instruction::XorAImm8(0x1)
-        ))
-    }
-
-    #[test]
-    fn or_a_imm8() {
-        assert!(matches!(
-            parse(0b11110110, 0x1, 0x0),
-            Instruction::OrAImm8(0x1)
-        ))
-    }
-
-    #[test]
-    fn cp_a_imm8() {
-        assert!(matches!(
-            parse(0b11111110, 0x1, 0x0),
-            Instruction::CpAImm8(0x1)
-        ))
+            assert_eq!(
+                expected_cycles,
+                actual_cycles,
+                "{} (opcode: {:#04x})",
+                data["mnemonic"].to_string(),
+                opcode_value
+            );
+        }
     }
 }

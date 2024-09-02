@@ -263,7 +263,9 @@ impl GameBoy {
         let arg_1 = self.get_memory_byte(self.registers.pc + 1);
         let arg_2 = self.get_memory_byte(self.registers.pc + 2);
 
-        return parse(opcode, arg_1, arg_2);
+        match parse(opcode, arg_1, arg_2) {
+            (ins, _, _) => ins,
+        }
     }
 
     pub fn get_memory_byte(&self, addr: u16) -> u8 {
