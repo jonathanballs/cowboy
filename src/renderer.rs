@@ -63,6 +63,23 @@ pub fn window_loop(rx: Receiver<PPU>) {
                         ((i as usize / 32) * 8).wrapping_sub(ppu.scy as usize),
                     )
                 }
+
+                for i in 0..40 {
+                    let start_position = 0xFE00 + i * 4;
+
+                    let y_position = ppu.get_byte(start_position);
+
+                    let x_position = ppu.get_byte(start_position + 1);
+                    let tile_index = ppu.get_byte(start_position + 2);
+                    let flags = ppu.get_byte(start_position + 3);
+
+                    render_tile(
+                        ppu.get_tile(tile_index as usize),
+                        &mut buffer,
+                        x_position.wrapping_sub(8) as usize,
+                        y_position.wrapping_sub(16) as usize,
+                    );
+                }
             }
             _ => (),
         }

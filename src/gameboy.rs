@@ -20,6 +20,9 @@ pub struct GameBoy {
     ime: bool,
     ie: u8,
 
+    // joypad
+    joypad: u8,
+
     // timers
     div: u8,
     tima: u8,
@@ -34,12 +37,14 @@ impl GameBoy {
     pub fn new(rom_data: Vec<u8>, tx: Sender<PPU>) -> GameBoy {
         GameBoy {
             boot_rom_enabled: true,
+            debugger_enabled: false,
 
             registers: Registers::new(),
             rom_data,
             ram: [0x0; 0xFFFF],
             ppu: PPU::new(tx),
-            debugger_enabled: false,
+
+            joypad: 0,
 
             ime: false,
             ie: 0,
@@ -284,6 +289,15 @@ impl GameBoy {
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
                 self.registers.f.subtract = true;
             }
+            Instruction::SubAImm8(value) => {
+                let result = self.registers.a.wrapping_sub(value);
+                self.registers.a = result;
+
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = value > self.registers.a;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
+                self.registers.f.subtract = true;
+            }
 
             Instruction::AddAR8(reg) => {
                 let value = self.get_r8_byte(reg);
@@ -293,7 +307,7 @@ impl GameBoy {
                 self.registers.f.zero = result == 0;
                 self.registers.f.carry = value > self.registers.a;
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
-                self.registers.f.subtract = true;
+                self.registers.f.subtract = false;
             }
             Instruction::OrAImm8(value) => {
                 let result = value | self.registers.a;
@@ -320,7 +334,7 @@ impl GameBoy {
                 self.registers.f.zero = result == 0;
                 self.registers.f.carry = value > self.registers.a;
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
-                self.registers.f.subtract = true;
+                self.registers.f.subtract = false;
             }
             Instruction::AddHlR16(reg) => {
                 let a = self.registers.get_r16(R16::HL);
@@ -398,6 +412,20 @@ impl GameBoy {
                 let result = self.get_r8_byte(reg.clone()) | 1 << bit_offset;
                 self.set_r8_byte(reg, result);
             }
+            Instruction::AdcAR8(reg) => {
+                let value = self.get_r8_byte(reg);
+                let result = self
+                    .registers
+                    .a
+                    .wrapping_add(value)
+                    .wrapping_add(self.registers.f.carry as u8);
+                self.registers.a = result;
+
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = value > self.registers.a;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
+                self.registers.f.subtract = false;
+            }
             _ => {
                 println!("{}", "Sorry cowboy but it looks like that instruction just ain't handled \nyet - get back out to the ranch and fix that dang emulator!".yellow());
                 self.debugger_cli();
@@ -464,8 +492,10 @@ impl GameBoy {
             // wrong!
             0xE000..=0xFDFF => unreachable!(),
 
+            // Joy pad
+            0xFF00 => self.joypad | 0xF,
+
             // Interrupt registers
-            0xFF00 => 0x0,
             0xFF04 => self.div,
             0xFF05 => self.tima,
             0xFF06 => self.tma,
@@ -490,10 +520,6 @@ impl GameBoy {
     }
 
     pub fn set_memory_byte(&mut self, addr: u16, byte: u8) {
-        //if addr == 0xff00 {
-        //    self.debugger_cli();
-        //}
-
         match addr {
             // ROM bank - ignore
             0x2000 => (),
@@ -522,7 +548,10 @@ impl GameBoy {
             }
 
             // Joy pad input
-            0xFF00 => (),
+            0xFF00 => {
+                self.joypad = byte;
+                dbg!(byte);
+            }
 
             // Serial Transfer. I will simply just not support this...
             0xFF01 => (),
