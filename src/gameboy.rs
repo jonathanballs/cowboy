@@ -1,14 +1,13 @@
 mod debugger;
 
 use colored::*;
-use std::{fmt, sync::mpsc::Sender, usize};
+use std::{sync::mpsc::Sender, usize};
 
 use crate::{
     bootrom::BOOT_ROM,
     instructions::{parse, r16::R16, r8::R8, Instruction},
     ppu::PPU,
     registers::Registers,
-    rom::GBCHeader,
 };
 
 pub struct GameBoy {
@@ -29,7 +28,7 @@ pub struct GameBoy {
     tac: u8,
 
     boot_rom_enabled: bool,
-    debugger_enabled: bool,
+    pub debugger_enabled: bool,
 }
 
 impl GameBoy {
@@ -386,12 +385,6 @@ impl GameBoy {
 
             // HRam
             0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
-
-            // Else
-            _ => {
-                dbg!(&self);
-                todo!()
-            }
         }
     }
 
