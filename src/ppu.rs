@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 const VRAM_SIZE: usize = 0x2000;
-//const VOAM_SIZE: usize = 0xA0;
+const VOAM_SIZE: usize = 0xA0;
 
 pub type Tile = [[u8; 8]; 8];
 
@@ -10,27 +10,44 @@ pub struct PPU {
     tx: Sender<PPU>,
     frame_number: u32,
     vram: [u8; VRAM_SIZE],
-    //voam: [u8; VOAM_SIZE],
+    voam: [u8; VOAM_SIZE],
     pub scy: u8,
     pub scx: u8,
     pub line: u8,
     pub lcdc: u8,
     pub bgp: u8,
     pub modeclock: u32,
+
+    pub wy: u8,
+    pub wx: u8,
+
+    pub obj_palette_0: u8,
+    pub obj_palette_1: u8,
+
+    pub stat: u8,
 }
 
 impl PPU {
     pub fn new(tx: Sender<PPU>) -> PPU {
         PPU {
+            frame_number: 1,
+
             scy: 0,
             scx: 0,
             bgp: 0,
             line: 0,
             lcdc: 0,
             modeclock: 32,
-            frame_number: 1,
+            stat: 0,
+
+            wy: 1,
+            wx: 1,
+
+            obj_palette_0: 0,
+            obj_palette_1: 0,
+
             vram: [0; VRAM_SIZE],
-            //voam: [0; VOAM_SIZE],
+            voam: [0; VOAM_SIZE],
             tx,
         }
     }
@@ -64,10 +81,20 @@ impl PPU {
             0xFF10..=0xFF26 => return 0,
 
             0xFF40 => self.lcdc,
+            0xFF41 => self.stat,
             0xFF42 => self.scy,
             0xFF43 => self.scx,
             0xFF44 => self.line,
             0xFF47 => self.bgp,
+
+            0xFF4A => self.wy,
+            0xFF4B => self.wx,
+
+            0xFF48 => self.obj_palette_0,
+            0xFF49 => self.obj_palette_1,
+
+            0xFe00..=0xFE9F => self.voam[(addr - 0xFE00) as usize],
+
             _ => {
                 dbg!(addr);
                 todo!()
@@ -84,9 +111,19 @@ impl PPU {
             0xFF10..=0xFF26 => (),
 
             0xFF40 => self.lcdc = value,
+            0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,
             0xFF43 => self.scx = value,
             0xFF47 => self.bgp = value,
+            0xFF48 => self.obj_palette_0 = value,
+            0xFF49 => self.obj_palette_1 = value,
+
+            0xFF4A => self.wy = value,
+            0xFF4B => self.wx = value,
+
+            0xFe00..=0xFE9F => self.voam[(addr - 0xFE00) as usize] = value,
+
+            0xFF7F => (),
 
             _ => {
                 println!("PPU does not support address {:x?}", addr);

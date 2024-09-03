@@ -1,4 +1,7 @@
+use core::fmt;
 use std::io::{self, Write};
+
+use crate::rom::GBCHeader;
 
 use super::GameBoy;
 use colored::*;
@@ -55,7 +58,8 @@ impl GameBoy {
         println!();
     }
 
-    pub fn debugger_cli(&mut self) {
+    pub fn debugger_cli(&self) {
+        //self.debugger_enabled = true;
         println!("{}", self.format_instruction());
 
         print!("{}", ">>> ".cyan());
@@ -73,7 +77,7 @@ impl GameBoy {
             "s" | "step" => return,
 
             "c" | "continue" => {
-                self.debugger_enabled = false;
+                //self.debugger_enabled = false;
                 return;
             }
 
@@ -98,5 +102,23 @@ impl GameBoy {
         }
 
         self.debugger_cli();
+    }
+}
+
+impl fmt::Debug for GameBoy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GameBoy")
+            .field("registers", &self.registers)
+            .field("rom", &GBCHeader::new(&self.rom_data))
+            .field("ime", &self.ime)
+            .field("ie", &self.ie)
+            .field("ifr", &self.ifr)
+            .field("div", &self.div)
+            .field("tima", &self.tima)
+            .field("tma", &self.tma)
+            .field("tac", &self.tac)
+            .field("instruction", &self.ins())
+            .field("instruction_raw", &self.get_memory_byte(self.registers.pc))
+            .finish()
     }
 }

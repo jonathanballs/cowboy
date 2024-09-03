@@ -66,6 +66,7 @@ impl fmt::Display for Instruction {
                 "r16mem" => format!("{}", args.pop().unwrap()).blue().to_string(),
                 "imm8mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
                 "imm16mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
+                "tgt3" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
 
                 "b3" => args.pop().unwrap().blue().to_string(),
                 "cond" => args.pop().unwrap().to_string(),
