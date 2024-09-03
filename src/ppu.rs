@@ -1,6 +1,5 @@
 use std::{
     sync::mpsc::Sender,
-    thread,
     time::{Duration, Instant},
 };
 
@@ -14,9 +13,11 @@ pub struct PPU {
     tx: Sender<PPU>,
     frame_number: u32,
     last_frame_time: Instant,
+    pub vblank_irq: bool,
 
     vram: [u8; VRAM_SIZE],
     voam: [u8; VOAM_SIZE],
+
     pub scy: u8,
     pub scx: u8,
     pub line: u8,
@@ -38,6 +39,7 @@ impl PPU {
         PPU {
             frame_number: 1,
             last_frame_time: Instant::now(),
+            vblank_irq: false,
 
             scy: 0,
             scx: 0,
@@ -71,13 +73,20 @@ impl PPU {
             if self.modeclock >= 456 {
                 self.modeclock -= 456;
                 self.line = (self.line + 1) % 154;
+
+                // Enter mode 1 (VBLANK)
+                if self.line == 144 {
+                    self.vblank_irq = true
+                }
+
+                // Frame finished - flush to screen
                 if self.line == 0 {
                     // Calculate how long to sleep
                     let elapsed = self.last_frame_time.elapsed();
                     let frame_duration = Duration::from_secs_f64(1.0 / 60.0);
 
                     if elapsed < frame_duration {
-                        thread::sleep(frame_duration - elapsed);
+                        //thread::sleep(frame_duration - elapsed);
                     }
 
                     // Update last frame time

@@ -19,7 +19,6 @@ pub struct GameBoy {
     // interrupts
     ime: bool,
     ie: u8,
-    ifr: u8,
 
     // timers
     div: u8,
@@ -43,7 +42,6 @@ impl GameBoy {
             debugger_enabled: false,
 
             ime: false,
-            ifr: 0,
             ie: 0,
 
             div: 0,
@@ -414,7 +412,7 @@ impl GameBoy {
             0xFF06 => self.tma,
             0xFF07 => self.tac,
 
-            0xFF0F => self.ifr,
+            0xFF0F => self.ppu.vblank_irq as u8,
             0xFF50 => {
                 if self.boot_rom_enabled {
                     0x0
@@ -460,7 +458,9 @@ impl GameBoy {
 
             // Enable/disable boot rom
             0xFF50 => self.boot_rom_enabled = byte == 0,
-            0xFF0F => self.ifr = byte,
+            0xFF0F => {
+                self.ppu.vblank_irq = byte & 0x1 > 0;
+            }
 
             // Joy pad input
             0xFF00 => (),

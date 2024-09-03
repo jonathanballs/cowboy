@@ -68,6 +68,47 @@ impl GameBoy {
         println!();
     }
 
+    fn print_interrupts(&self) {
+        fn colored_bool(b: bool) -> String {
+            if b {
+                return "true ".green().to_string();
+            }
+            return "false".red().to_string();
+        }
+
+        println!("======== interrupts ========");
+        println!("           enabled   flagged");
+        println!("IME:       {}", colored_bool(self.ime));
+        println!("");
+        println!(
+            "VBlank:    {:5}     {}",
+            colored_bool(self.ie & 0x1 > 0),
+            colored_bool(self.get_memory_byte(0xFF0F) & 0x1 > 0)
+        );
+        println!(
+            "LCD:       {:5}     {}",
+            colored_bool(self.ie & 0x2 > 0),
+            colored_bool(self.get_memory_byte(0xFF0F) & 0x2 > 0)
+        );
+        println!(
+            "Timer:     {:5}     {}",
+            colored_bool(self.ie & 0x4 > 0),
+            colored_bool(self.get_memory_byte(0xFF0F) & 0x4 > 0)
+        );
+        println!(
+            "Serial:    {:5}     {}",
+            colored_bool(self.ie & 0x8 > 0),
+            colored_bool(self.get_memory_byte(0xFF0F) & 0x8 > 0)
+        );
+        println!(
+            "Joypad:    {:5}     {}",
+            colored_bool(self.ie & 0x16 > 0),
+            colored_bool(self.get_memory_byte(0xFF0F) & 0x16 > 0)
+        );
+
+        println!("");
+    }
+
     pub fn debugger_cli(&self) {
         //self.debugger_enabled = true;
         println!("{}", self.format_instruction());
@@ -98,9 +139,13 @@ impl GameBoy {
                 println!("OK")
             }
 
-            "r" | "rom" => println!("{:#?}", &GBCHeader::new(&self.rom_data)),
+            "rom" => println!("{:#?}", &GBCHeader::new(&self.rom_data)),
+
+            "r" | "registers" => println!("{:#?}", self.registers),
 
             "h" | "help" => self.print_help(),
+
+            "i" | "interrupts" => self.print_interrupts(),
 
             "p" | "print" => {
                 if args.len() != 2 {
@@ -126,11 +171,13 @@ impl GameBoy {
     fn print_help(&self) {
         println!("============== COWBOY DEBUGGER ==============");
         println!("[s]tep | <Enter>          step an instruction");
-        println!("[d]ebug                   print gameboy state");
         println!("[p]rint a b               dump gameboy memory");
-        println!("[r]om                     display gameboy rom");
+        println!("[d]ebug                   print gameboy state");
         println!("[f]lush                   flush ppu to screen");
+        println!("[r]egisters               print cpu registers");
+        println!("[i]nterrupts              show interupt flags");
         println!("[h]elp                    show this help info");
+        println!("rom                       display gameboy rom");
         println!("=============================================");
         println!("");
     }
@@ -139,10 +186,8 @@ impl GameBoy {
 impl fmt::Debug for GameBoy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GameBoy")
-            .field("registers", &self.registers)
             .field("ime", &self.ime)
             .field("ie", &self.ie)
-            .field("ifr", &self.ifr)
             .field("div", &self.div)
             .field("tima", &self.tima)
             .field("tma", &self.tma)

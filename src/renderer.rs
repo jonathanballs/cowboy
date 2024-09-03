@@ -45,9 +45,6 @@ pub fn window_loop(rx: Receiver<PPU>) {
     )
     .unwrap();
 
-    // Limit to max ~60 fps update rate
-    window.set_target_fps(60);
-
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // We unwrap here as we want this code to exit if it fails. Real applications may want to
         // handle this in a different way
