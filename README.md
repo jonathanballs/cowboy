@@ -1,14 +1,8 @@
 # Cowboy
 
-Yeehaw!
+Howdy! Cowboy is a gameboy emulator that I've been building in Rust. I'm doing it mostly as an educational exercise to learn not just about Rust but about emulation as well. It also comes with a pretty nifty decompiler and debugger built in which is very useful while developing! It is certainly not complete (or playable really) but it can load some games and even get to main menu. My main goal at the moment is to focus on emulating Tetris as it's one of the simplest games on the platform.
 
-This is a gameboy emulator that I'm writing while learning rust.
-
-It targets gameboy colour and I'm trying to get it to run Pokemon Gold!
-
-Status: very early...
-
-![Screenshot 2024-08-28 at 15 52 16](https://github.com/user-attachments/assets/c74eb742-c370-4170-b3af-bb9a34692e9a)
+![Screenshot 2024-09-03 at 18 44 30](https://github.com/user-attachments/assets/79f27012-5c56-417e-9d11-ecea3c862667)
 
 ## References
 
