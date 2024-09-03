@@ -1,7 +1,7 @@
 use core::fmt;
 use std::io::{self, Write};
 
-use crate::rom::GBCHeader;
+use crate::{instructions::parse, rom::GBCHeader};
 
 use super::GameBoy;
 use colored::*;
@@ -21,13 +21,23 @@ fn parse_number(s: &str) -> Result<u16, String> {
 
 impl GameBoy {
     pub fn format_instruction(&self) -> String {
+        let instruction_address = format!("{:#06X}", self.registers.pc);
+
+        let opcode = self.get_memory_byte(self.registers.pc);
+        let arg_1 = self.get_memory_byte(self.registers.pc + 1);
+        let arg_2 = self.get_memory_byte(self.registers.pc + 2);
+
+        let (_, instruction_length, _) = parse(opcode, arg_1, arg_2);
+        let instruction_bytes = (0..instruction_length)
+            .map(|o| format!("{:x}", self.get_memory_byte(self.registers.pc + o as u16)))
+            .collect::<Vec<String>>()
+            .join("");
+
         format!(
-            //"{:#06X} {:#04X}: {} ({:X?})",
-            "{:#06X} {:#04X}: {}",
-            self.registers.pc,
-            self.get_memory_byte(self.registers.pc),
+            "{} 0x{}: {}",
+            instruction_address,
+            instruction_bytes,
             self.ins(),
-            //self.ins(),
         )
     }
 
@@ -85,7 +95,7 @@ impl GameBoy {
 
             "h" | "help" => self.print_help(),
 
-            "p" | "m" | "mem" => {
+            "p" | "print" => {
                 if args.len() != 2 {
                     println!("{}", "ERR: Please provide two numerical arguments".red());
                 }

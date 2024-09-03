@@ -76,6 +76,10 @@ impl GameBoy {
                 self.registers.pc = addr;
                 bytes = 0;
             }
+            Instruction::JpHl => {
+                self.registers.pc = self.registers.get_r16(R16::HL);
+                bytes = 0;
+            }
             Instruction::LdR16Imm16mem(reg, value) => {
                 self.registers.set_r16(reg, value);
             }
@@ -251,6 +255,7 @@ impl GameBoy {
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
                 self.registers.f.subtract = true;
             }
+
             Instruction::AddAR8(reg) => {
                 let value = self.get_r8_byte(reg);
                 let result = self.registers.a.wrapping_add(value);
@@ -261,6 +266,18 @@ impl GameBoy {
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
                 self.registers.f.subtract = true;
             }
+            Instruction::AddHlR16(reg) => {
+                let a = self.registers.get_r16(R16::HL);
+                let b = self.registers.get_r16(reg);
+                let r = a.wrapping_add(b);
+
+                self.registers.f.half_carry = (a & 0x0FFF) + (b & 0x0FFF) > 0x0FFF;
+                self.registers.f.subtract = false;
+                self.registers.f.carry = a > 0xFFFF - b;
+
+                self.registers.set_r16(R16::HL, r);
+            }
+
             Instruction::LdImm16memA(addr) => {
                 self.set_memory_byte(addr, self.get_r8_byte(R8::A));
             }
@@ -312,6 +329,9 @@ impl GameBoy {
                 self.registers.f.half_carry = false;
                 self.registers.f.subtract = false;
             }
+            //Instruction::ResB3R8(bit_offset, reg) => {
+            //    self.set_r8_byte(reg, self.get_r8_byte(reg) | 1 << (bit_offset - 1))
+            //}
             _ => {
                 println!("{}", "Sorry cowboy but it looks like that instruction just ain't \nhandled yet - get back out to the ranch and fix that dang emulator".yellow());
                 self.debugger_cli();
