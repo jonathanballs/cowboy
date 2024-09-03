@@ -80,6 +80,12 @@ impl GameBoy {
                 self.registers.pc = self.registers.get_r16(R16::HL);
                 bytes = 0;
             }
+            Instruction::JpCondImm16(cond, imm16) => {
+                if self.registers.f.evaluate_condition(cond) {
+                    self.registers.pc = imm16;
+                }
+                bytes = 0;
+            }
             Instruction::LdR16Imm16mem(reg, value) => {
                 self.registers.set_r16(reg, value);
             }
@@ -179,6 +185,9 @@ impl GameBoy {
                 let addr = self.registers.get_r16_mem(reg);
                 let value = self.get_memory_byte(addr);
                 self.registers.set_r8(R8::A, value);
+            }
+            Instruction::LdAImm16mem(imm16) => {
+                self.registers.set_r8(R8::A, self.get_memory_byte(imm16));
             }
             Instruction::CallImm16(addr) => {
                 self.set_memory_word(self.registers.sp - 2, self.registers.pc + 3);
@@ -329,11 +338,12 @@ impl GameBoy {
                 self.registers.f.half_carry = false;
                 self.registers.f.subtract = false;
             }
-            //Instruction::ResB3R8(bit_offset, reg) => {
-            //    self.set_r8_byte(reg, self.get_r8_byte(reg) | 1 << (bit_offset - 1))
-            //}
+            Instruction::ResB3R8(bit_offset, reg) => {
+                let result = self.get_r8_byte(reg.clone()) | 1 << bit_offset;
+                self.set_r8_byte(reg, result);
+            }
             _ => {
-                println!("{}", "Sorry cowboy but it looks like that instruction just ain't \nhandled yet - get back out to the ranch and fix that dang emulator".yellow());
+                println!("{}", "Sorry cowboy but it looks like that instruction just ain't handled \nyet - get back out to the ranch and fix that dang emulator!".yellow());
                 self.debugger_cli();
                 todo!();
             }
