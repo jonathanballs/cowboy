@@ -34,6 +34,8 @@ impl GameBoy {
         let opcode = self.ins();
         self.ppu.do_cycle(3);
 
+        //println!("{}", self.format_instruction());
+
         if self.registers.pc == 0xE9 {
             println!("{}", self.format_instruction());
             dbg!(&self);
