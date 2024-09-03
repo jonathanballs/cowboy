@@ -168,10 +168,6 @@ impl GameBoy {
                 self.set_r8_byte(dest, self.get_r8_byte(src));
             }
             Instruction::LdhImm8memA(addr) => {
-                //if addr == 0x01 {
-                //    self.debugger_cli();
-                //}
-
                 let target_address = 0xFF00 + addr as u16;
                 self.set_memory_byte(target_address, self.get_r8_byte(R8::A));
             }
@@ -225,6 +221,17 @@ impl GameBoy {
                 self.registers.f.half_carry = false;
                 self.registers.f.carry = value >> 7 == 1;
             }
+            Instruction::SlaR8(reg) => {
+                let value = self.get_r8_byte(R8::A);
+                let new_value = (value << 1) | self.registers.f.carry as u8;
+                self.set_r8_byte(reg, new_value);
+
+                self.registers.f.carry = value >> 7 == 1;
+                self.registers.f.half_carry = false;
+                self.registers.f.subtract = false;
+                self.registers.f.zero = new_value == 0;
+            }
+
             Instruction::PopR16stk(reg) => {
                 let value = self.get_memory_word(self.registers.sp);
                 self.registers.set_r16_stk(reg, value);
@@ -288,6 +295,33 @@ impl GameBoy {
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
                 self.registers.f.subtract = true;
             }
+            Instruction::OrAImm8(value) => {
+                let result = value | self.registers.a;
+                self.registers.a = result;
+
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = false;
+                self.registers.f.half_carry = false;
+                self.registers.f.subtract = false;
+            }
+            Instruction::XorAImm8(value) => {
+                let result = value ^ self.registers.a;
+                self.registers.a = result;
+
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = false;
+                self.registers.f.half_carry = false;
+                self.registers.f.subtract = false;
+            }
+            Instruction::AddAImm8(value) => {
+                let result = self.registers.a.wrapping_add(value);
+                self.registers.a = result;
+
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = value > self.registers.a;
+                self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
+                self.registers.f.subtract = true;
+            }
             Instruction::AddHlR16(reg) => {
                 let a = self.registers.get_r16(R16::HL);
                 let b = self.registers.get_r16(reg);
@@ -341,6 +375,15 @@ impl GameBoy {
                 self.registers.f.half_carry = true;
                 self.registers.f.subtract = true;
             }
+            Instruction::Rlca => {
+                let value = self.registers.a;
+                self.registers.f.carry = value >> 7 > 0;
+                self.registers.f.zero = false;
+                self.registers.f.half_carry = false;
+                self.registers.f.subtract = false;
+                self.registers.a = (self.registers.a << 1) | (self.registers.a >> 7);
+            }
+
             Instruction::SwapR8(reg) => {
                 let register_value = self.get_r8_byte(reg.clone());
                 let swapped = (register_value >> 4) + (register_value << 4);

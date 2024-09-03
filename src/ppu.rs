@@ -87,7 +87,7 @@ impl PPU {
                     let frame_duration = Duration::from_secs_f64(1.0 / 60.0);
 
                     if elapsed < frame_duration {
-                        thread::sleep(frame_duration - elapsed);
+                        //thread::sleep(frame_duration - elapsed);
                     }
 
                     // Update last frame time
@@ -110,7 +110,7 @@ impl PPU {
             0x8000..=0x9FFF => self.vram[(addr - 0x8000) as usize],
 
             // Sound.
-            0xFF10..=0xFF26 => return 0,
+            0xFF10..=0xFF3F => return 0,
 
             0xFF40 => self.lcdc,
             0xFF41 => self.stat,
@@ -140,7 +140,7 @@ impl PPU {
             0x8000..=0x9FFF => self.vram[(addr - 0x8000) as usize] = value,
 
             // Sound.
-            0xFF10..=0xFF26 => (),
+            0xFF10..=0xFF3F => (),
 
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,
