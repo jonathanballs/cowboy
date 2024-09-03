@@ -74,7 +74,7 @@ impl GameBoy {
         let args: Vec<&str> = parts.collect();
 
         match command.as_str() {
-            "s" | "step" => return,
+            "" | "s" | "step" => return,
 
             "c" | "continue" => {
                 //self.debugger_enabled = false;
@@ -82,6 +82,8 @@ impl GameBoy {
             }
 
             "d" | "debug" => println!("{:#?}", &self),
+
+            "h" | "help" => self.print_help(),
 
             "p" | "m" | "mem" => {
                 if args.len() != 2 {
@@ -102,6 +104,16 @@ impl GameBoy {
         }
 
         self.debugger_cli();
+    }
+
+    fn print_help(&self) {
+        println!("============== COWBOY DEBUGGER ==============");
+        println!("[s]tep | <Enter>          step");
+        println!("[d]ebug                   print gameboy state");
+        println!("[p]rint a b               dump gameboy memory");
+        println!("[h]elp                    show this help info");
+        println!("=============================================");
+        println!("");
     }
 }
 

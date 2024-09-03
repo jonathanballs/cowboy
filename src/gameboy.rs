@@ -294,9 +294,8 @@ impl GameBoy {
             Instruction::Di => {
                 self.ime = false;
             }
-
             Instruction::Ei => {
-                self.ime = false;
+                self.ime = true;
             }
             Instruction::Cpl => {
                 self.registers.a = !self.registers.a;
@@ -378,6 +377,13 @@ impl GameBoy {
             0xFF07 => self.tac,
 
             0xFF0F => self.ifr,
+            0xFF50 => {
+                if self.boot_rom_enabled {
+                    0x0
+                } else {
+                    0x1
+                }
+            }
             0xFFFF => self.ie,
 
             // Delegate OAM and I/O Registers to PPU
@@ -415,7 +421,7 @@ impl GameBoy {
             0xE000..=0xFDFF => unreachable!(),
 
             // Enable/disable boot rom
-            0xFF50 => self.boot_rom_enabled = byte != 0,
+            0xFF50 => self.boot_rom_enabled = byte == 0,
             0xFF0F => self.ifr = byte,
 
             // Joy pad input
