@@ -93,6 +93,13 @@ impl GameBoy {
 
             "d" | "debug" => println!("{:#?}", &self),
 
+            "f" | "flush" => {
+                self.ppu.flush();
+                println!("OK")
+            }
+
+            "r" | "rom" => println!("{:#?}", &GBCHeader::new(&self.rom_data)),
+
             "h" | "help" => self.print_help(),
 
             "p" | "print" => {
@@ -118,9 +125,11 @@ impl GameBoy {
 
     fn print_help(&self) {
         println!("============== COWBOY DEBUGGER ==============");
-        println!("[s]tep | <Enter>          step");
+        println!("[s]tep | <Enter>          step an instruction");
         println!("[d]ebug                   print gameboy state");
         println!("[p]rint a b               dump gameboy memory");
+        println!("[r]om                     display gameboy rom");
+        println!("[f]lush                   flush ppu to screen");
         println!("[h]elp                    show this help info");
         println!("=============================================");
         println!("");
@@ -131,7 +140,6 @@ impl fmt::Debug for GameBoy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GameBoy")
             .field("registers", &self.registers)
-            .field("rom", &GBCHeader::new(&self.rom_data))
             .field("ime", &self.ime)
             .field("ie", &self.ie)
             .field("ifr", &self.ifr)

@@ -83,8 +83,8 @@ impl GameBoy {
             Instruction::JpCondImm16(cond, imm16) => {
                 if self.registers.f.evaluate_condition(cond) {
                     self.registers.pc = imm16;
+                    bytes = 0;
                 }
-                bytes = 0;
             }
             Instruction::LdR16Imm16mem(reg, value) => {
                 self.registers.set_r16(reg, value);

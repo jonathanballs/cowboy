@@ -1,4 +1,8 @@
-use std::sync::mpsc::Sender;
+use std::{
+    sync::mpsc::Sender,
+    thread,
+    time::{Duration, Instant},
+};
 
 const VRAM_SIZE: usize = 0x2000;
 const VOAM_SIZE: usize = 0xA0;
@@ -9,6 +13,8 @@ pub type Tile = [[u8; 8]; 8];
 pub struct PPU {
     tx: Sender<PPU>,
     frame_number: u32,
+    last_frame_time: Instant,
+
     vram: [u8; VRAM_SIZE],
     voam: [u8; VOAM_SIZE],
     pub scy: u8,
@@ -31,6 +37,7 @@ impl PPU {
     pub fn new(tx: Sender<PPU>) -> PPU {
         PPU {
             frame_number: 1,
+            last_frame_time: Instant::now(),
 
             scy: 0,
             scx: 0,
@@ -65,11 +72,26 @@ impl PPU {
                 self.modeclock -= 456;
                 self.line = (self.line + 1) % 154;
                 if self.line == 0 {
+                    // Calculate how long to sleep
+                    let elapsed = self.last_frame_time.elapsed();
+                    let frame_duration = Duration::from_secs_f64(1.0 / 60.0);
+
+                    if elapsed < frame_duration {
+                        thread::sleep(frame_duration - elapsed);
+                    }
+
+                    // Update last frame time
+                    self.last_frame_time = Instant::now();
+
                     self.frame_number += 1;
-                    self.tx.send(self.clone()).unwrap();
+                    self.flush();
                 }
             }
         }
+    }
+
+    pub fn flush(&self) {
+        self.tx.send(self.clone()).unwrap();
     }
 
     pub fn get_byte(&self, addr: u16) -> u8 {
