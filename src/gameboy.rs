@@ -1,3 +1,5 @@
+mod debugger;
+
 use colored::*;
 use std::{fmt, sync::mpsc::Sender, usize};
 
@@ -16,6 +18,7 @@ pub struct GameBoy {
     pub ppu: PPU,
 
     boot_rom_enabled: bool,
+    debugger_enabled: bool,
 }
 
 impl GameBoy {
@@ -27,6 +30,7 @@ impl GameBoy {
             rom_data,
             ram: [0x0; 0xFFFF],
             ppu: PPU::new(tx),
+            debugger_enabled: false,
         }
     }
 
@@ -34,20 +38,13 @@ impl GameBoy {
         let opcode = self.ins();
         self.ppu.do_cycle(3);
 
-        //println!("{}", self.format_instruction());
-
         if self.registers.pc == 0xE9 {
-            println!("{}", self.format_instruction());
-            dbg!(&self);
-            dbg!(self.registers.get_r16(R16::HL));
-            dbg!(self.registers.get_r16(R16::DE));
+            println!("{}", "Breakpoint hit. Entering debugger...".red());
+            self.debugger_enabled = true;
+        }
 
-            //for i in 0..128 {
-            //    let mem_start = i * 16;
-            //    println!("{} {:x?}", i, &self.ram[mem_start..mem_start + 16]);
-            //}
-            //panic!("sorry");
-            //sleep_ms(1000);
+        if self.debugger_enabled {
+            self.debugger_cli()
         }
 
         match opcode {
@@ -213,9 +210,6 @@ impl GameBoy {
                 let result = self.registers.a.wrapping_sub(value);
 
                 self.registers.f.zero = result == 0;
-                dbg!(value);
-                dbg!(result);
-                dbg!(result == 0);
                 self.registers.f.carry = value > self.registers.a;
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
                 self.registers.f.subtract = true;
@@ -368,16 +362,6 @@ impl GameBoy {
         } else {
             self.registers.pc = self.registers.pc.wrapping_sub(distance.abs() as u16)
         };
-    }
-
-    pub fn format_instruction(&self) -> String {
-        format!(
-            "{:#06X} {:#04X}: {} ({:X?})",
-            self.registers.pc,
-            self.get_memory_byte(self.registers.pc),
-            self.ins(),
-            self.ins(),
-        )
     }
 
     fn get_r8_byte(&self, reg: R8) -> u8 {
