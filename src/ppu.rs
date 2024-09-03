@@ -1,5 +1,6 @@
 use std::{
     sync::mpsc::Sender,
+    thread,
     time::{Duration, Instant},
 };
 
@@ -86,7 +87,7 @@ impl PPU {
                     let frame_duration = Duration::from_secs_f64(1.0 / 60.0);
 
                     if elapsed < frame_duration {
-                        //thread::sleep(frame_duration - elapsed);
+                        thread::sleep(frame_duration - elapsed);
                     }
 
                     // Update last frame time

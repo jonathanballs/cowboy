@@ -236,6 +236,13 @@ impl GameBoy {
                 self.registers.pc = addr;
                 bytes = 0;
             }
+            Instruction::Reti => {
+                let addr = self.get_memory_word(self.registers.sp);
+                self.registers.sp += 2;
+                self.registers.pc = addr;
+                self.ime = true;
+                bytes = 0;
+            }
             Instruction::RetCond(cond) => {
                 if self.registers.f.evaluate_condition(cond) {
                     let addr = self.get_memory_word(self.registers.sp);
@@ -357,6 +364,19 @@ impl GameBoy {
 
         self.registers.pc += bytes as u16;
         self.ppu.do_cycle(cycles as u32 / 4);
+
+        // Handle interrupts
+        if self.ime {
+            if self.get_memory_byte(0xFF0F) & 1 > 0 && self.ppu.vblank_irq {
+                // Call 0x40
+                self.ppu.vblank_irq = false;
+                self.ime = false;
+
+                self.set_memory_word(self.registers.sp - 2, self.registers.pc + 3);
+                self.registers.sp -= 2;
+                self.registers.pc = 0x40;
+            }
+        }
     }
 
     pub fn ins(&self) -> Instruction {
@@ -370,10 +390,6 @@ impl GameBoy {
     }
 
     pub fn get_memory_byte(&self, addr: u16) -> u8 {
-        //if addr == 0xff00 {
-        //    self.debugger_cli();
-        //}
-
         // Reference: https://gbdev.io/pandocs/Memory_Map.html
         match addr {
             // Boot Rom
@@ -474,6 +490,17 @@ impl GameBoy {
             0xFF05 => self.tima = byte,
             0xFF06 => self.tma = byte,
             0xFF07 => self.tac = byte,
+
+            // DMA transfer from rom
+            0xFF46 => {
+                let source_addr = (byte as u16) << 8;
+                for offset in 0x0..=0x9F {
+                    self.set_memory_byte(
+                        0xFE00 + offset,
+                        self.get_memory_byte(source_addr + offset),
+                    )
+                }
+            }
 
             // Not usable. Ignore writes...
             0xFEA0..=0xFEFF => (),
