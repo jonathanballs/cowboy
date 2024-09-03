@@ -238,6 +238,14 @@ impl GameBoy {
                 self.registers.pc = addr;
                 bytes = 0;
             }
+            Instruction::RetCond(cond) => {
+                if self.registers.f.evaluate_condition(cond) {
+                    let addr = self.get_memory_word(self.registers.sp);
+                    self.registers.sp += 2;
+                    self.registers.pc = addr;
+                    bytes = 0;
+                }
+            }
             Instruction::CpAImm8(value) => {
                 let result = self.registers.a.wrapping_sub(value);
                 self.registers.f.zero = result == 0;
