@@ -205,6 +205,7 @@ impl GameBoy {
     fn print_help(&self) {
         println!("============== COWBOY DEBUGGER ==============");
         println!("[s]tep | <Enter>          step an instruction");
+        println!("[c]ontinue                leave debug session");
         println!("[p]rint a b               dump gameboy memory");
         println!("[b]reak a                 breakpoint creation");
         println!("[b]reak [m]emory a        break on mem access");

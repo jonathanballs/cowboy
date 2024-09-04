@@ -34,3 +34,7 @@ well.
   highest quality technical references I have worked with. The level of precision
   and attention to detail is unparalleled especially when debugging edge cases for
   specific CPU instructions or timing details.
+- [The Ultimate Game Boy Talk
+  (33c3)](https://www.youtube.com/watch?v=HyzD8pNlpwI&t=2540s) An excellent talk
+  from the chaos computer club conference. This is very useful when you are
+  getting started and want to get a feel for the system.
