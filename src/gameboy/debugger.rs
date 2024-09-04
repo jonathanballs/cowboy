@@ -222,6 +222,7 @@ impl GameBoy {
 impl fmt::Debug for GameBoy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GameBoy")
+            .field("registers", &self.registers)
             .field("ime", &self.ime)
             .field("ie", &self.ie)
             .field("div", &self.div)
