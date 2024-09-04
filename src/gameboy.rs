@@ -38,6 +38,7 @@ pub struct GameBoy {
     dulr: u8,
 
     // timers
+    cycles_since_div: u8,
     div: u8,
     tima: u8,
     tma: u8,
@@ -69,6 +70,7 @@ impl GameBoy {
             ie: 0,
 
             div: 0,
+            cycles_since_div: 0,
             tima: 0,
             tma: 0,
             tac: 0,
@@ -571,6 +573,12 @@ impl GameBoy {
         self.registers.pc += bytes as u16;
         self.ppu.do_cycle(cycles as u32 / 4);
 
+        // Increase DIV register
+        if 0xff - self.cycles_since_div >= cycles {
+            self.div = self.div.wrapping_add(1);
+        }
+        self.cycles_since_div = self.cycles_since_div.wrapping_add(cycles);
+
         // Handle interrupts
         if self.ime && !just_set_ei {
             if self.get_memory_byte(0xFF0F) & 1 > 0 && self.ppu.vblank_irq {
@@ -727,8 +735,10 @@ impl GameBoy {
             0xFF01 => (),
             0xFF02 => (),
 
+            // Div register
+            0xFF04 => self.div = 0x0,
+
             // Interrupt registers
-            0xFF04 => self.div = byte,
             0xFF05 => self.tima = byte,
             0xFF06 => self.tma = byte,
             0xFF07 => self.tac = byte,

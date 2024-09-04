@@ -34,5 +34,3 @@ well.
   highest quality technical references I have worked with. The level of precision
   and attention to detail is unparalleled especially when debugging edge cases for
   specific CPU instructions or timing details.
-
-These links were very helpful
