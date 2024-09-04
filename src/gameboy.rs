@@ -714,7 +714,10 @@ impl GameBoy {
             0x8000..=0x9FFF => self.ppu.set_byte(addr, byte),
 
             // External RAM
-            0xA000..=0xBFFF => todo!(),
+            0xA000..=0xBFFF => {
+                self.debugger_cli();
+                todo!()
+            }
 
             // Work RAM
             0x8000..=0xDFFF => self.ram[addr as usize - 0x8000] = byte,
