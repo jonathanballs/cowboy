@@ -28,7 +28,7 @@ fn main() {
     let (tx_key, rx_key) = mpsc::channel::<(bool, Key)>();
 
     let emulator_loop = thread::spawn(move || {
-        let rom_data = read_file_to_bytes("tetris.gb").unwrap();
+        let rom_data = read_file_to_bytes("roms/tetris.gb").unwrap();
         let mut gameboy = GameBoy::new(rom_data, tx.clone(), rx_key);
         gameboy.start()
     });
