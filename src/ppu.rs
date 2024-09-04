@@ -84,10 +84,10 @@ impl PPU {
                 if self.line == 0 {
                     // Calculate how long to sleep
                     let elapsed = self.last_frame_time.elapsed();
-                    let frame_duration = Duration::from_secs_f64(1.0 / 60.0);
+                    let frame_duration = Duration::from_secs_f64(1.0 / 120.0);
 
                     if elapsed < frame_duration {
-                        //thread::sleep(frame_duration - elapsed);
+                        thread::sleep(frame_duration - elapsed);
                     }
 
                     // Update last frame time

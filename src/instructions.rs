@@ -168,15 +168,15 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u8, u8) {
 
         // Illegal instructions
         0xD3 => (Instruction::ILLEGAL, 1, 4),
+        0xDB => (Instruction::ILLEGAL, 1, 4),
         0xDD => (Instruction::ILLEGAL, 1, 4),
         0xE3 => (Instruction::ILLEGAL, 1, 4),
         0xE4 => (Instruction::ILLEGAL, 1, 4),
-        0xDB => (Instruction::ILLEGAL, 1, 4),
         0xEB => (Instruction::ILLEGAL, 1, 4),
         0xEC => (Instruction::ILLEGAL, 1, 4),
-        0xFC => (Instruction::ILLEGAL, 1, 4),
-        0xF4 => (Instruction::ILLEGAL, 1, 4),
         0xED => (Instruction::ILLEGAL, 1, 4),
+        0xF4 => (Instruction::ILLEGAL, 1, 4),
+        0xFC => (Instruction::ILLEGAL, 1, 4),
         0xFD => (Instruction::ILLEGAL, 1, 4),
     };
 }

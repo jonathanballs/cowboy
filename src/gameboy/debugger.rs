@@ -109,75 +109,111 @@ impl GameBoy {
         println!("");
     }
 
-    pub fn debugger_cli(&self) {
-        //self.debugger_enabled = true;
+    pub fn debugger_cli(&mut self) {
         println!("{}", self.format_instruction());
+        loop {
+            print!("{}", ">>> ".cyan());
+            let _ = io::stdout().flush();
 
-        print!("{}", ">>> ".cyan());
-        let _ = io::stdout().flush();
+            let mut input = String::new();
+            io::stdin().read_line(&mut input).unwrap();
 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
+            let input = input.trim();
+            let mut parts = input.split_whitespace();
+            let command = parts.next().unwrap_or("").to_lowercase();
+            let args: Vec<&str> = parts.collect();
 
-        let input = input.trim();
-        let mut parts = input.split_whitespace();
-        let command = parts.next().unwrap_or("").to_lowercase();
-        let args: Vec<&str> = parts.collect();
-
-        match command.as_str() {
-            "" | "s" | "step" => return,
-
-            "c" | "continue" => {
-                //self.debugger_enabled = false;
-                return;
-            }
-
-            "d" | "debug" => println!("{:#?}", &self),
-
-            "f" | "flush" => {
-                self.ppu.flush();
-                println!("OK")
-            }
-
-            "rom" => println!("{:#?}", &GBCHeader::new(&self.rom_data)),
-
-            "r" | "registers" => println!("{:#?}", self.registers),
-
-            "h" | "help" => self.print_help(),
-
-            "i" | "interrupts" => self.print_interrupts(),
-
-            "p" | "print" => {
-                if args.len() != 2 {
-                    println!("{}", "ERR: Please provide two numerical arguments".red());
+            match command.as_str() {
+                "" | "s" | "step" => {
+                    self.debugger_enabled = true;
+                    return;
                 }
 
-                match (parse_number(args[0]), parse_number(args[1])) {
-                    (Ok(start), Ok(end)) => self.print_memory_range(start, end),
-                    _ => {
-                        println!("{}", "ERR: Invalid invalid numbers passed to mem".red());
+                "c" | "continue" => {
+                    self.debugger_enabled = false;
+                    return;
+                }
+
+                "d" | "debug" => println!("{:#?}", &self),
+
+                "f" | "flush" => {
+                    self.ppu.flush();
+                    println!("OK")
+                }
+
+                "ro" | "rom" => println!("{:#?}", &GBCHeader::new(&self.rom_data)),
+
+                "r" | "registers" => println!("{:#?}", self.registers),
+
+                "h" | "help" => self.print_help(),
+
+                "i" | "interrupts" => self.print_interrupts(),
+
+                "p" | "print" => {
+                    if args.len() != 2 {
+                        println!("{}", "ERR: Please provide two numerical arguments".red());
+                        continue;
+                    }
+
+                    match (parse_number(args[0]), parse_number(args[1])) {
+                        (Ok(start), Ok(end)) => self.print_memory_range(start, end),
+                        _ => {
+                            println!("{}", "ERR: Invalid invalid numbers passed to mem".red());
+                        }
                     }
                 }
-            }
 
-            _ => {
-                println!("{}", "ERR: Invalid debugger command".red());
+                "b" | "break" => {
+                    if args.len() != 1 {
+                        println!("{}", "ERR: Please provide two numerical arguments".red());
+                        continue;
+                    }
+
+                    match parse_number(args[0]) {
+                        Ok(breakpoint) => {
+                            self.breakpoints.insert(breakpoint);
+                        }
+                        _ => {
+                            println!("{}", "ERR: Invalid invalid numbers passed to mem".red());
+                        }
+                    }
+                }
+
+                "bm" | "breakmemory" => {
+                    if args.len() != 1 {
+                        println!("{}", "ERR: Please provide two numerical arguments".red());
+                        continue;
+                    }
+
+                    match parse_number(args[0]) {
+                        Ok(breakpoint) => {
+                            self.memory_breakpoints.insert(breakpoint);
+                        }
+                        _ => {
+                            println!("{}", "ERR: Invalid invalid numbers passed to mem".red());
+                        }
+                    }
+                }
+
+                _ => {
+                    println!("{}", "ERR: Invalid debugger command".red());
+                }
             }
         }
-
-        self.debugger_cli();
     }
 
     fn print_help(&self) {
         println!("============== COWBOY DEBUGGER ==============");
         println!("[s]tep | <Enter>          step an instruction");
         println!("[p]rint a b               dump gameboy memory");
+        println!("[b]reak a                 breakpoint creation");
+        println!("[b]reak [m]emory a        break on mem access");
         println!("[d]ebug                   print gameboy state");
         println!("[f]lush                   flush ppu to screen");
         println!("[r]egisters               print cpu registers");
         println!("[i]nterrupts              show interupt flags");
         println!("[h]elp                    show this help info");
-        println!("rom                       display gameboy rom");
+        println!("[ro]m                     display gameboy rom");
         println!("=============================================");
         println!("");
     }
@@ -192,6 +228,9 @@ impl fmt::Debug for GameBoy {
             .field("tima", &self.tima)
             .field("tma", &self.tma)
             .field("tac", &self.tac)
+            .field("joypad", &self.joypad)
+            .field("dulr", &self.dulr)
+            .field("ssba", &self.ssba)
             .field("instruction", &self.ins())
             .field("instruction_raw", &self.get_memory_byte(self.registers.pc))
             .finish()

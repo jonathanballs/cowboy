@@ -1,7 +1,13 @@
 mod debugger;
 
 use colored::*;
-use std::{sync::mpsc::Sender, usize};
+use minifb::Key;
+use std::collections::HashSet;
+use std::process::exit;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::Arc;
+use std::usize;
 
 use crate::{
     bootrom::BOOT_ROM,
@@ -11,6 +17,12 @@ use crate::{
 };
 
 pub struct GameBoy {
+    key_rx: Receiver<(bool, Key)>,
+
+    // debugger
+    breakpoints: HashSet<u16>,
+    memory_breakpoints: HashSet<u16>,
+
     pub registers: Registers,
     pub rom_data: Vec<u8>,
     pub ram: [u8; 0xFFFF],
@@ -22,6 +34,8 @@ pub struct GameBoy {
 
     // joypad
     joypad: u8,
+    ssba: u8,
+    dulr: u8,
 
     // timers
     div: u8,
@@ -34,7 +48,7 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new(rom_data: Vec<u8>, tx: Sender<PPU>) -> GameBoy {
+    pub fn new(rom_data: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) -> GameBoy {
         GameBoy {
             boot_rom_enabled: true,
             debugger_enabled: false,
@@ -44,7 +58,12 @@ impl GameBoy {
             ram: [0x0; 0xFFFF],
             ppu: PPU::new(tx),
 
+            breakpoints: HashSet::with_capacity(10),
+            memory_breakpoints: HashSet::with_capacity(10),
+
             joypad: 0,
+            dulr: 0xF,
+            ssba: 0xF,
 
             ime: false,
             ie: 0,
@@ -53,6 +72,35 @@ impl GameBoy {
             tima: 0,
             tma: 0,
             tac: 0,
+
+            key_rx: rx,
+        }
+    }
+
+    pub fn start(&mut self) {
+        let paused = Arc::new(AtomicBool::new(false));
+        let p = paused.clone();
+
+        ctrlc::set_handler(move || {
+            if p.load(Ordering::SeqCst) {
+                // If already paused, stop the emulator
+                println!("{}", "\nSo long space cowboy".red());
+                exit(-1);
+            } else {
+                // If running, pause the emulator
+                p.store(true, Ordering::SeqCst);
+                println!("Received Ctrl+C! Pausing at the end of this step...");
+            }
+        })
+        .expect("Error setting Ctrl-C handler");
+
+        loop {
+            if paused.load(Ordering::SeqCst) {
+                self.debugger_enabled = true;
+            }
+            paused.store(false, Ordering::SeqCst);
+
+            self.step();
         }
     }
 
@@ -63,14 +111,41 @@ impl GameBoy {
 
         let (instruction, mut bytes, cycles) = parse(opcode, arg_1, arg_2);
 
-        //println!("{} {} {}", self.format_instruction(), bytes, cycles);
-        //if self.registers.pc == 0xE9 {
-        //    println!("{}", "Breakpoint hit. Entering debugger...".red());
-        //    self.debugger_enabled = true;
-        //}
+        // Handle keyboard input
+        loop {
+            match self.key_rx.try_recv() {
+                Ok((true, Key::Right)) => self.dulr &= !0x1,
+                Ok((false, Key::Right)) => self.dulr |= 0x1,
+                Ok((true, Key::Left)) => self.dulr &= !0x2,
+                Ok((false, Key::Left)) => self.dulr |= 0x2,
+                Ok((true, Key::Up)) => self.dulr &= !0x4,
+                Ok((false, Key::Up)) => self.dulr |= 0x4,
+                Ok((true, Key::Down)) => self.dulr &= !0x8,
+                Ok((false, Key::Down)) => self.dulr |= 0x8,
+
+                Ok((true, Key::S)) => self.ssba &= !0x1,
+                Ok((false, Key::S)) => self.ssba |= 0x1,
+                Ok((true, Key::A)) => self.ssba &= !0x2,
+                Ok((false, Key::A)) => self.ssba |= 0x2,
+                Ok((true, Key::Space)) => self.ssba &= !0x4,
+                Ok((false, Key::Space)) => self.ssba |= 0x4,
+                Ok((true, Key::Enter)) => self.ssba &= !0x8,
+                Ok((false, Key::Enter)) => self.ssba |= 0x8,
+                Err(_) => {
+                    break;
+                }
+                _ => (),
+            }
+            //println!("{:02x} {:02x}", self.get_memory_byte(0xFF00), self.joypad);
+        }
+
+        // Enable the debugger immediately upon encountering a breakpoint
+        if self.breakpoints.contains(&self.registers.pc) {
+            self.debugger_enabled = true;
+        }
 
         if self.debugger_enabled {
-            self.debugger_cli()
+            self.debugger_cli();
         }
 
         match instruction {
@@ -94,11 +169,13 @@ impl GameBoy {
             }
             Instruction::XorAR8(reg) => {
                 let r = self.registers.a ^ self.get_r8_byte(reg.clone());
+
                 self.registers.f.zero = r == 0;
                 self.registers.f.subtract = false;
                 self.registers.f.carry = false;
                 self.registers.f.half_carry = false;
-                self.registers.set_r8(reg, r);
+
+                self.registers.a = r;
             }
             Instruction::LdR16memA(r16) => {
                 let target_address = self.registers.get_r16_mem(r16);
@@ -106,7 +183,8 @@ impl GameBoy {
                 self.set_memory_byte(target_address, value);
             }
             Instruction::BitB3R8(i, reg) => {
-                let result = (self.get_r8_byte(reg) >> i) & 1;
+                let result = self.get_r8_byte(reg) & (1 << i);
+
                 self.registers.f.zero = result == 0;
                 self.registers.f.subtract = false;
                 self.registers.f.half_carry = true;
@@ -127,8 +205,9 @@ impl GameBoy {
                 self.set_memory_byte(target_address, self.registers.a);
             }
             Instruction::IncR8(reg) => {
-                self.set_r8_byte(reg.clone(), self.get_r8_byte(reg.clone()).wrapping_add(1));
-                let value = self.get_r8_byte(reg);
+                let value = self.get_r8_byte(reg.clone()).wrapping_add(1);
+                self.set_r8_byte(reg.clone(), value);
+
                 self.registers.f.zero = value == 0;
                 self.registers.f.subtract = false;
                 self.registers.f.half_carry = (value & 0x0F) == 0x0F;
@@ -226,6 +305,15 @@ impl GameBoy {
                 self.registers.f.half_carry = false;
                 self.registers.f.carry = value >> 7 == 1;
             }
+            Instruction::SrlR8(reg) => {
+                let value = self.get_r8_byte(reg.clone());
+                let new_value = value >> 1;
+                self.set_r8_byte(reg, new_value);
+
+                self.registers.f.subtract = false;
+                self.registers.f.half_carry = false;
+                self.registers.f.carry = value & 1 == 1;
+            }
             Instruction::SlaR8(reg) => {
                 let value = self.get_r8_byte(R8::A);
                 let new_value = (value << 1) | self.registers.f.carry as u8;
@@ -318,6 +406,16 @@ impl GameBoy {
                 self.registers.f.half_carry = false;
                 self.registers.f.subtract = false;
             }
+            Instruction::OrAR8(reg) => {
+                let value = self.get_r8_byte(reg);
+                let result = value | self.registers.a;
+                self.registers.a = result;
+
+                self.registers.f.zero = result == 0;
+                self.registers.f.carry = false;
+                self.registers.f.half_carry = false;
+                self.registers.f.subtract = false;
+            }
             Instruction::XorAImm8(value) => {
                 let result = value ^ self.registers.a;
                 self.registers.a = result;
@@ -351,18 +449,10 @@ impl GameBoy {
             Instruction::LdImm16memA(addr) => {
                 self.set_memory_byte(addr, self.get_r8_byte(R8::A));
             }
-            Instruction::OrAR8(reg) => {
-                let value = self.get_r8_byte(reg);
-                let result = value | self.registers.a;
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.carry = false;
-                self.registers.f.half_carry = false;
-                self.registers.f.subtract = false;
-            }
             Instruction::AndAR8(reg) => {
                 let value = self.get_r8_byte(reg);
                 let result = value & self.registers.a;
+                self.registers.a = result;
 
                 self.registers.f.zero = result == 0;
                 self.registers.f.subtract = false;
@@ -371,13 +461,13 @@ impl GameBoy {
             }
             Instruction::AndAImm8(imm8) => {
                 let result = imm8 & self.registers.a;
+                self.registers.a = result;
 
                 self.registers.f.zero = result == 0;
                 self.registers.f.subtract = false;
                 self.registers.f.half_carry = true;
                 self.registers.f.carry = false;
             }
-
             Instruction::Di => {
                 self.ime = false;
             }
@@ -493,7 +583,27 @@ impl GameBoy {
             0xE000..=0xFDFF => unreachable!(),
 
             // Joy pad
-            0xFF00 => self.joypad | 0xF,
+            0xFF00 => {
+                if self.debugger_enabled {
+                    println!("{:#x} {:#x}", self.joypad, (self.joypad >> 4) & 0x3);
+                }
+
+                return match (self.joypad >> 4) & 0x3 {
+                    // Return both
+                    0x0 => 0xC0 | (self.dulr & self.ssba),
+
+                    // Return select
+                    0x1 => 0xD0 | self.ssba,
+
+                    // Return dpad
+                    0x2 => 0xE0 | self.dulr,
+
+                    // Return neither
+                    0x3 => 0xFF,
+
+                    _ => unreachable!(),
+                };
+            }
 
             // Interrupt registers
             0xFF04 => self.div,
@@ -520,6 +630,14 @@ impl GameBoy {
     }
 
     pub fn set_memory_byte(&mut self, addr: u16, byte: u8) {
+        if self.memory_breakpoints.contains(&addr) {
+            println!(
+                "{}",
+                "Hit memory breakpoint... Dropping into debugger".red()
+            );
+            self.debugger_cli();
+        }
+
         match addr {
             // ROM bank - ignore
             0x2000 => (),
@@ -548,10 +666,7 @@ impl GameBoy {
             }
 
             // Joy pad input
-            0xFF00 => {
-                self.joypad = byte;
-                dbg!(byte);
-            }
+            0xFF00 => self.joypad = byte,
 
             // Serial Transfer. I will simply just not support this...
             0xFF01 => (),
