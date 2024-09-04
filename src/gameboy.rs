@@ -389,13 +389,13 @@ impl GameBoy {
             Instruction::AddHlR16(reg) => {
                 let a = self.registers.get_r16(R16::HL);
                 let b = self.registers.get_r16(reg);
-                let r = a.wrapping_add(b);
+                let result = a.wrapping_add(b);
 
                 self.registers.f.half_carry = (a & 0x0FFF) + (b & 0x0FFF) > 0x0FFF;
                 self.registers.f.subtract = false;
-                self.registers.f.carry = a > 0xFFFF - b;
+                self.registers.f.carry = result < a;
 
-                self.registers.set_r16(R16::HL, r);
+                self.registers.set_r16(R16::HL, result);
             }
             Instruction::SubAR8(reg) => {
                 let a = self.registers.a;

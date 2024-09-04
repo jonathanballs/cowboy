@@ -1,8 +1,15 @@
 # Cowboy
 
-Howdy! Cowboy is a gameboy emulator that I've been building in Rust. I'm doing it mostly as an educational exercise to learn not just about Rust but about emulation as well. It also comes with a pretty nifty decompiler and debugger built in which is very useful while developing! It is certainly not complete (or playable really) but it can load some games and even get to main menu. My main goal at the moment is to focus on emulating Tetris as it's one of the simplest games on the platform.
+Howdy! Cowboy is a gameboy emulator that I've been building in Rust. I'm doing
+it mostly as an educational exercise to learn not just about Rust but about
+emulation as well. It also comes with a pretty nifty decompiler and debugger
+built in which is very useful while developing! It is certainly not complete
+(or playable really) but it can load some games and even get to main menu. My
+main goal at the moment is to focus on emulating Tetris as it's one of the
+simplest games on the platform.
 
-![Screenshot 2024-09-03 at 18 44 30](https://github.com/user-attachments/assets/79f27012-5c56-417e-9d11-ecea3c862667)
+![Screenshot 2024-09-03 at 18 44
+30](https://github.com/user-attachments/assets/79f27012-5c56-417e-9d11-ecea3c862667)
 
 ## References
 
@@ -22,5 +29,10 @@ well.
   The first point of call for building a gameboy emulator should be emulating the
   boot rom. This blog post is a very thorough disection of the gameboy boot ROM
   and was invaluable for getting the first version of Cowboy running.
+- [Game Boy: Complete Technical
+  Reference](https://gekkio.fi/files/gb-docs/gbctr.pdf) Probably one of the
+  highest quality technical references I have worked with. The level of precision
+  and attention to detail is unparalleled especially when debugging edge cases for
+  specific CPU instructions or timing details.
 
 These links were very helpful
