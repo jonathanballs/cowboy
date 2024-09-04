@@ -440,32 +440,37 @@ impl GameBoy {
                 self.registers.f.carry = a < b;
             }
 
+            // Bit rotation
             Instruction::RlR8(reg) => {
                 let value = self.get_r8_byte(reg);
-                let new_value = (value << 1) | self.registers.f.carry as u8;
+                let result = (value << 1) | self.registers.f.carry as u8;
 
-                self.set_r8_byte(reg, new_value);
+                self.set_r8_byte(reg, result);
 
-                self.registers.f.zero = new_value == 0;
+                self.registers.f.zero = result == 0;
                 self.registers.f.subtract = false;
                 self.registers.f.half_carry = false;
                 self.registers.f.carry = value >> 7 == 1;
             }
             Instruction::Rla => {
                 let value = self.get_r8_byte(R8::A);
-                let new_value = (value << 1) | self.registers.f.carry as u8;
+                let result = (value << 1) | self.registers.f.carry as u8;
 
-                self.set_r8_byte(R8::A, new_value);
+                self.set_r8_byte(R8::A, result);
 
+                // zero register is always false for RLA
+                self.registers.f.zero = false;
                 self.registers.f.subtract = false;
                 self.registers.f.half_carry = false;
-                self.registers.f.carry = value >> 7 == 1;
+                self.registers.f.carry = (value & 0x80) != 0;
             }
+
             Instruction::SrlR8(reg) => {
                 let value = self.get_r8_byte(reg);
-                let new_value = value >> 1;
-                self.set_r8_byte(reg, new_value);
+                let result = value >> 1;
+                self.set_r8_byte(reg, result);
 
+                self.registers.f.zero = result == 0;
                 self.registers.f.subtract = false;
                 self.registers.f.half_carry = false;
                 self.registers.f.carry = value & 1 == 1;
