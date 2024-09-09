@@ -15,38 +15,6 @@ impl Joypad {
         }
     }
 
-    pub fn read_byte(&self, addr: u16) -> u8 {
-        match addr {
-            // Joy pad
-            0xFF00 => {
-                return match (self.joypad >> 4) & 0x3 {
-                    // Return both
-                    0x0 => 0xC0 | (self.dulr & self.ssba),
-
-                    // Return select
-                    0x1 => 0xD0 | self.ssba,
-
-                    // Return dpad
-                    0x2 => 0xE0 | self.dulr,
-
-                    // Return neither
-                    0x3 => 0xFF,
-
-                    _ => unreachable!(),
-                };
-            }
-
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn write_byte(&mut self, addr: u16, byte: u8) {
-        match addr {
-            0xFF00 => self.joypad = byte,
-            _ => unreachable!(),
-        }
-    }
-
     pub fn handle_key_down(&mut self, key: Key) {
         match key {
             Key::Right => self.dulr &= !0x1,
@@ -76,6 +44,38 @@ impl Joypad {
             Key::Enter => self.ssba |= 0x8,
 
             _ => (),
+        }
+    }
+
+    pub fn read_byte(&self, addr: u16) -> u8 {
+        match addr {
+            // Joy pad
+            0xFF00 => {
+                return match (self.joypad >> 4) & 0x3 {
+                    // Return both
+                    0x0 => 0xC0 | (self.dulr & self.ssba),
+
+                    // Return select
+                    0x1 => 0xD0 | self.ssba,
+
+                    // Return dpad
+                    0x2 => 0xE0 | self.dulr,
+
+                    // Return neither
+                    0x3 => 0xFF,
+
+                    _ => unreachable!(),
+                };
+            }
+
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn write_byte(&mut self, addr: u16, byte: u8) {
+        match addr {
+            0xFF00 => self.joypad = byte,
+            _ => unreachable!(),
         }
     }
 }
