@@ -7,7 +7,6 @@ use std::process::exit;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
-use std::usize;
 
 use crate::mmu::MMU;
 use crate::{
@@ -20,11 +19,11 @@ pub struct GameBoy {
     key_rx: Receiver<(bool, Key)>,
 
     // debugger
+    pub debugger_enabled: bool,
     breakpoints: HashSet<u16>,
     memory_breakpoints: HashSet<u16>,
 
     pub registers: Registers,
-    pub ram: [u8; 0xFFFF],
     pub ppu: PPU,
 
     mmu: MMU,
@@ -39,8 +38,6 @@ pub struct GameBoy {
     tima: u8,
     tma: u8,
     tac: u8,
-
-    pub debugger_enabled: bool,
 }
 
 impl GameBoy {
@@ -49,7 +46,6 @@ impl GameBoy {
             debugger_enabled: false,
 
             registers: Registers::new(),
-            ram: [0x0; 0xFFFF],
             ppu: PPU::new(tx),
 
             breakpoints: HashSet::with_capacity(10),
@@ -593,7 +589,7 @@ impl GameBoy {
             }
 
             // Work RAM
-            0xC000..=0xDFFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+            0xC000..=0xDFFF => self.mmu.read_byte(addr),
 
             // Echo RAM
             // In theory this maps to 0xC000..=0xDDFF but since it's not really used in practice
@@ -623,7 +619,7 @@ impl GameBoy {
             0xFE00..=0xFF7F => self.ppu.get_byte(addr),
 
             // HRam
-            0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+            0xFF80..=0xFFFE => self.mmu.read_byte(addr),
         }
     }
 
@@ -657,7 +653,7 @@ impl GameBoy {
             }
 
             // Work RAM
-            0x8000..=0xDFFF => self.ram[addr as usize - 0x8000] = byte,
+            0x8000..=0xDFFF => self.mmu.write_byte(addr, byte),
 
             // Echo RAM
             0xE000..=0xFDFF => unreachable!(),
@@ -706,14 +702,9 @@ impl GameBoy {
             }
 
             // HRam
-            0xFF80..=0xFFFE => self.ram[(addr - 0x8000) as usize] = byte,
+            0xFF80..=0xFFFE => self.mmu.write_byte(addr, byte),
 
             0xFFFF => self.ie = byte,
-            //_ => {
-            //    dbg!(addr);
-            //    dbg!(byte);
-            //    todo!()
-            //}
         }
     }
 
