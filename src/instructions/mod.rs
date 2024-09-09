@@ -345,10 +345,7 @@ mod test {
     #[test]
     fn opcodes_json() {
         // Read the JSON file
-        let filename = Path::new(file!())
-            .parent()
-            .unwrap()
-            .join("instructions/opcodes.json");
+        let filename = Path::new(file!()).parent().unwrap().join("opcodes.json");
 
         let mut file = File::open(filename).unwrap();
         let mut contents = String::new();
