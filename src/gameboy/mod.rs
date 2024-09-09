@@ -1,7 +1,9 @@
 mod debugger;
+mod timer;
 
 use colored::*;
 use std::collections::HashSet;
+use timer::Timer;
 
 use crate::mmu::MMU;
 use crate::{
@@ -24,11 +26,7 @@ pub struct GameBoy {
     ie: u8,
 
     // timers
-    cycles_since_div: u8,
-    div: u8,
-    tima: u8,
-    tma: u8,
-    tac: u8,
+    timer: Timer,
 }
 
 impl GameBoy {
@@ -46,11 +44,7 @@ impl GameBoy {
             ime: false,
             ie: 0,
 
-            div: 0,
-            cycles_since_div: 0,
-            tima: 0,
-            tma: 0,
-            tac: 0,
+            timer: Timer::new(),
         }
     }
 
@@ -58,7 +52,9 @@ impl GameBoy {
         let opcode = self.get_memory_byte(self.registers.pc);
         let arg_1 = self.get_memory_byte(self.registers.pc + 1);
         let arg_2 = self.get_memory_byte(self.registers.pc + 2);
+
         let mut just_set_ei = false;
+
         let (instruction, mut bytes, cycles) = parse(opcode, arg_1, arg_2);
         // Enable the debugger immediately upon encountering a breakpoint
         if self.breakpoints.contains(&self.registers.pc) {
@@ -492,11 +488,7 @@ impl GameBoy {
         self.mmu.ppu.do_cycle(cycles as u32 / 4);
 
         // Increase DIV register
-        if 0xff - self.cycles_since_div >= cycles {
-            self.div = self.div.wrapping_add(1);
-        }
-        self.cycles_since_div = self.cycles_since_div.wrapping_add(cycles);
-
+        self.timer.do_cycles(cycles);
         // Handle interrupts
         if self.ime && !just_set_ei {
             if self.get_memory_byte(0xFF0F) & 1 > 0 && self.mmu.ppu.vblank_irq {
@@ -556,10 +548,7 @@ impl GameBoy {
             0xFF00 => self.mmu.read_byte(addr),
 
             // Interrupt registers
-            0xFF04 => self.div,
-            0xFF05 => self.tima,
-            0xFF06 => self.tma,
-            0xFF07 => self.tac,
+            0xFF04..=0xFF07 => self.timer.read_byte(addr),
 
             0xFFFF => self.ie,
 
@@ -616,12 +605,7 @@ impl GameBoy {
             0xFF02 => (),
 
             // Div register
-            0xFF04 => self.div = 0x0,
-
-            // Interrupt registers
-            0xFF05 => self.tima = byte,
-            0xFF06 => self.tma = byte,
-            0xFF07 => self.tac = byte,
+            0xFF04..=0xFF07 => self.timer.write_byte(addr, byte),
 
             // DMA transfer from rom
             0xFF46 => {
