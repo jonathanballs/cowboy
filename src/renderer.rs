@@ -52,11 +52,11 @@ fn latest_ppu(rx: &Receiver<PPU>) -> Option<PPU> {
     latest_frame
 }
 
-pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>) {
+pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &String) {
     let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
     let mut window = Window::new(
-        "Cowboy Emulator",
+        format!("Cowboy Emulator - {}", game_title).as_str(),
         WIDTH,
         HEIGHT,
         WindowOptions {
