@@ -9,6 +9,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::usize;
 
+use crate::mmu::MMU;
 use crate::{
     instructions::{parse, r16::R16, r8::R8, Instruction},
     mmu::bootrom::BOOT_ROM,
@@ -32,10 +33,7 @@ pub struct GameBoy {
     ime: bool,
     ie: u8,
 
-    // joypad
-    joypad: u8,
-    ssba: u8,
-    dulr: u8,
+    mmu: MMU,
 
     // timers
     cycles_since_div: u8,
@@ -62,9 +60,7 @@ impl GameBoy {
             breakpoints: HashSet::with_capacity(10),
             memory_breakpoints: HashSet::with_capacity(10),
 
-            joypad: 0,
-            dulr: 0xF,
-            ssba: 0xF,
+            mmu: MMU::new(),
 
             ime: false,
             ie: 0,
@@ -117,29 +113,10 @@ impl GameBoy {
         // Handle keyboard input
         loop {
             match self.key_rx.try_recv() {
-                Ok((true, Key::Right)) => self.dulr &= !0x1,
-                Ok((false, Key::Right)) => self.dulr |= 0x1,
-                Ok((true, Key::Left)) => self.dulr &= !0x2,
-                Ok((false, Key::Left)) => self.dulr |= 0x2,
-                Ok((true, Key::Up)) => self.dulr &= !0x4,
-                Ok((false, Key::Up)) => self.dulr |= 0x4,
-                Ok((true, Key::Down)) => self.dulr &= !0x8,
-                Ok((false, Key::Down)) => self.dulr |= 0x8,
-
-                Ok((true, Key::S)) => self.ssba &= !0x1,
-                Ok((false, Key::S)) => self.ssba |= 0x1,
-                Ok((true, Key::A)) => self.ssba &= !0x2,
-                Ok((false, Key::A)) => self.ssba |= 0x2,
-                Ok((true, Key::Space)) => self.ssba &= !0x4,
-                Ok((false, Key::Space)) => self.ssba |= 0x4,
-                Ok((true, Key::Enter)) => self.ssba &= !0x8,
-                Ok((false, Key::Enter)) => self.ssba |= 0x8,
-                Err(_) => {
-                    break;
-                }
-                _ => (),
+                Ok((true, key)) => self.mmu.joypad.handle_key_down(key),
+                Ok((false, key)) => self.mmu.joypad.handle_key_up(key),
+                _ => break,
             }
-            //println!("{:02x} {:02x}", self.get_memory_byte(0xFF00), self.joypad);
         }
 
         // Enable the debugger immediately upon encountering a breakpoint
@@ -644,27 +621,7 @@ impl GameBoy {
             }
 
             // Joy pad
-            0xFF00 => {
-                if self.debugger_enabled {
-                    println!("{:#x} {:#x}", self.joypad, (self.joypad >> 4) & 0x3);
-                }
-
-                return match (self.joypad >> 4) & 0x3 {
-                    // Return both
-                    0x0 => 0xC0 | (self.dulr & self.ssba),
-
-                    // Return select
-                    0x1 => 0xD0 | self.ssba,
-
-                    // Return dpad
-                    0x2 => 0xE0 | self.dulr,
-
-                    // Return neither
-                    0x3 => 0xFF,
-
-                    _ => unreachable!(),
-                };
-            }
+            0xFF00 => self.mmu.read_byte(addr),
 
             // Interrupt registers
             0xFF04 => self.div,
@@ -732,7 +689,7 @@ impl GameBoy {
             }
 
             // Joy pad input
-            0xFF00 => self.joypad = byte,
+            0xFF00 => self.mmu.write_byte(addr, byte),
 
             // Serial Transfer. I will simply just not support this...
             0xFF01 => (),
