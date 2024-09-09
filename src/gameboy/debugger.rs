@@ -45,8 +45,11 @@ impl GameBoy {
                 "d" | "debug" => println!("{:#?}", &self),
 
                 "f" | "flush" => {
-                    self.ppu.flush();
-                    println!("OK")
+                    //pub fn flush(&self) {
+                    //    self.tx.send(self.clone()).unwrap();
+                    //}
+                    //self.ppu.flush();
+                    println!("UNSUPPORTED")
                 }
 
                 "ro" | "rom" => println!("{:#?}", &GBCHeader::new(&self.mmu.rom)),

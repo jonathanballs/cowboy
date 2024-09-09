@@ -1,32 +1,23 @@
 mod debugger;
 
 use colored::*;
-use minifb::Key;
 use std::collections::HashSet;
-use std::process::exit;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::Arc;
 
 use crate::mmu::MMU;
 use crate::{
     instructions::{parse, r16::R16, r8::R8, Instruction},
-    ppu::PPU,
     registers::Registers,
 };
 
 pub struct GameBoy {
-    key_rx: Receiver<(bool, Key)>,
-
     // debugger
     pub debugger_enabled: bool,
     breakpoints: HashSet<u16>,
     memory_breakpoints: HashSet<u16>,
 
+    // state
     pub registers: Registers,
-    pub ppu: PPU,
-
-    mmu: MMU,
+    pub mmu: MMU,
 
     // interrupts
     ime: bool,
@@ -41,12 +32,11 @@ pub struct GameBoy {
 }
 
 impl GameBoy {
-    pub fn new(rom_data: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) -> GameBoy {
+    pub fn new(rom_data: Vec<u8>) -> GameBoy {
         GameBoy {
             debugger_enabled: false,
 
             registers: Registers::new(),
-            ppu: PPU::new(tx),
 
             breakpoints: HashSet::with_capacity(10),
             memory_breakpoints: HashSet::with_capacity(10),
@@ -61,35 +51,6 @@ impl GameBoy {
             tima: 0,
             tma: 0,
             tac: 0,
-
-            key_rx: rx,
-        }
-    }
-
-    pub fn start(&mut self) {
-        let paused = Arc::new(AtomicBool::new(false));
-        let p = paused.clone();
-
-        ctrlc::set_handler(move || {
-            if p.load(Ordering::SeqCst) {
-                // If already paused, stop the emulator
-                println!("{}", "\nSo long space cowboy".red());
-                exit(-1);
-            } else {
-                // If running, pause the emulator
-                p.store(true, Ordering::SeqCst);
-                println!("Received Ctrl+C! Pausing at the end of this step...");
-            }
-        })
-        .expect("Error setting Ctrl-C handler");
-
-        loop {
-            if paused.load(Ordering::SeqCst) {
-                self.debugger_enabled = true;
-            }
-            paused.store(false, Ordering::SeqCst);
-
-            self.step();
         }
     }
 
@@ -98,18 +59,7 @@ impl GameBoy {
         let arg_1 = self.get_memory_byte(self.registers.pc + 1);
         let arg_2 = self.get_memory_byte(self.registers.pc + 2);
         let mut just_set_ei = false;
-
         let (instruction, mut bytes, cycles) = parse(opcode, arg_1, arg_2);
-
-        // Handle keyboard input
-        loop {
-            match self.key_rx.try_recv() {
-                Ok((true, key)) => self.mmu.joypad.handle_key_down(key),
-                Ok((false, key)) => self.mmu.joypad.handle_key_up(key),
-                _ => break,
-            }
-        }
-
         // Enable the debugger immediately upon encountering a breakpoint
         if self.breakpoints.contains(&self.registers.pc) {
             self.debugger_enabled = true;
@@ -539,7 +489,7 @@ impl GameBoy {
         };
 
         self.registers.pc += bytes as u16;
-        self.ppu.do_cycle(cycles as u32 / 4);
+        self.mmu.ppu.do_cycle(cycles as u32 / 4);
 
         // Increase DIV register
         if 0xff - self.cycles_since_div >= cycles {
@@ -549,9 +499,9 @@ impl GameBoy {
 
         // Handle interrupts
         if self.ime && !just_set_ei {
-            if self.get_memory_byte(0xFF0F) & 1 > 0 && self.ppu.vblank_irq {
+            if self.get_memory_byte(0xFF0F) & 1 > 0 && self.mmu.ppu.vblank_irq {
                 // Call 0x40
-                self.ppu.vblank_irq = false;
+                self.mmu.ppu.vblank_irq = false;
                 self.ime = false;
 
                 self.set_memory_word(self.registers.sp - 2, self.registers.pc + 3);
@@ -578,7 +528,7 @@ impl GameBoy {
             0x0..=0x7FFF => self.mmu.read_byte(addr),
 
             // VRAM
-            0x8000..=0x9FFF => self.ppu.get_byte(addr),
+            0x8000..=0x9FFF => self.mmu.read_byte(addr),
 
             // External RAM
             0xA000..=0xBFFF => {
@@ -611,14 +561,10 @@ impl GameBoy {
             0xFF06 => self.tma,
             0xFF07 => self.tac,
 
-            0xFF0F => self.ppu.vblank_irq as u8,
-            0xFF50 => self.mmu.read_byte(addr), // boot rom status
             0xFFFF => self.ie,
 
             // Delegate OAM and I/O Registers to PPU
-            0xFE00..=0xFF7F => self.ppu.get_byte(addr),
-
-            // HRam
+            0xFE00..=0xFF7F => self.mmu.read_byte(addr),
             0xFF80..=0xFFFE => self.mmu.read_byte(addr),
         }
     }
@@ -644,7 +590,7 @@ impl GameBoy {
             }
 
             // VRAM
-            0x8000..=0x9FFF => self.ppu.set_byte(addr, byte),
+            0x8000..=0x9FFF => self.mmu.write_byte(addr, byte),
 
             // External RAM
             0xA000..=0xBFFF => {
@@ -653,16 +599,14 @@ impl GameBoy {
             }
 
             // Work RAM
-            0x8000..=0xDFFF => self.mmu.write_byte(addr, byte),
+            0xC000..=0xDFFF => self.mmu.write_byte(addr, byte),
 
             // Echo RAM
             0xE000..=0xFDFF => unreachable!(),
 
             // Enable/disable boot rom
             0xFF50 => self.mmu.write_byte(addr, byte),
-            0xFF0F => {
-                self.ppu.vblank_irq = byte & 0x1 > 0;
-            }
+            0xFF0F => self.mmu.write_byte(addr, byte),
 
             // Joy pad input
             0xFF00 => self.mmu.write_byte(addr, byte),
@@ -694,12 +638,7 @@ impl GameBoy {
             0xFEA0..=0xFEFF => (),
 
             // Delegate OAM and I/O Registers to PPU
-            0xFE00..=0xFF7F => {
-                //if addr == 0xFF7F {
-                //    self.debugger_cli();
-                //}
-                self.ppu.set_byte(addr, byte)
-            }
+            0xFE00..=0xFF7F => self.mmu.write_byte(addr, byte),
 
             // HRam
             0xFF80..=0xFFFE => self.mmu.write_byte(addr, byte),

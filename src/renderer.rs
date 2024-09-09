@@ -1,7 +1,7 @@
 use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
-use crate::ppu::{Tile, PPU};
+use crate::mmu::ppu::{Tile, PPU};
 
 const WIDTH: usize = 160;
 const HEIGHT: usize = 144;

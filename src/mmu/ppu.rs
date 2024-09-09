@@ -1,5 +1,4 @@
 use std::{
-    sync::mpsc::Sender,
     thread,
     time::{Duration, Instant},
 };
@@ -11,7 +10,7 @@ pub type Tile = [[u8; 8]; 8];
 
 #[derive(Debug, Clone)]
 pub struct PPU {
-    tx: Sender<PPU>,
+    frame_available: bool,
     frame_number: u32,
     last_frame_time: Instant,
     pub vblank_irq: bool,
@@ -36,8 +35,9 @@ pub struct PPU {
 }
 
 impl PPU {
-    pub fn new(tx: Sender<PPU>) -> PPU {
+    pub fn new() -> PPU {
         PPU {
+            frame_available: false,
             frame_number: 1,
             last_frame_time: Instant::now(),
             vblank_irq: false,
@@ -58,7 +58,6 @@ impl PPU {
 
             vram: [0; VRAM_SIZE],
             voam: [0; VOAM_SIZE],
-            tx,
         }
     }
 
@@ -94,14 +93,10 @@ impl PPU {
                     self.last_frame_time = Instant::now();
 
                     self.frame_number += 1;
-                    self.flush();
+                    self.frame_available = true;
                 }
             }
         }
-    }
-
-    pub fn flush(&self) {
-        self.tx.send(self.clone()).unwrap();
     }
 
     pub fn get_byte(&self, addr: u16) -> u8 {
@@ -162,6 +157,12 @@ impl PPU {
                 todo!()
             }
         }
+    }
+
+    pub fn get_and_reset_frame_available(&mut self) -> bool {
+        let result = self.frame_available;
+        self.frame_available = false;
+        return result;
     }
 
     pub fn get_tile(&self, tile_index: usize) -> Tile {
