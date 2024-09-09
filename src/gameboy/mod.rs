@@ -12,7 +12,6 @@ use std::usize;
 use crate::mmu::MMU;
 use crate::{
     instructions::{parse, r16::R16, r8::R8, Instruction},
-    mmu::bootrom::BOOT_ROM,
     ppu::PPU,
     registers::Registers,
 };
@@ -25,15 +24,14 @@ pub struct GameBoy {
     memory_breakpoints: HashSet<u16>,
 
     pub registers: Registers,
-    pub rom_data: Vec<u8>,
     pub ram: [u8; 0xFFFF],
     pub ppu: PPU,
+
+    mmu: MMU,
 
     // interrupts
     ime: bool,
     ie: u8,
-
-    mmu: MMU,
 
     // timers
     cycles_since_div: u8,
@@ -42,25 +40,22 @@ pub struct GameBoy {
     tma: u8,
     tac: u8,
 
-    boot_rom_enabled: bool,
     pub debugger_enabled: bool,
 }
 
 impl GameBoy {
     pub fn new(rom_data: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) -> GameBoy {
         GameBoy {
-            boot_rom_enabled: true,
             debugger_enabled: false,
 
             registers: Registers::new(),
-            rom_data,
             ram: [0x0; 0xFFFF],
             ppu: PPU::new(tx),
 
             breakpoints: HashSet::with_capacity(10),
             memory_breakpoints: HashSet::with_capacity(10),
 
-            mmu: MMU::new(),
+            mmu: MMU::new(rom_data),
 
             ime: false,
             ie: 0,
@@ -584,16 +579,7 @@ impl GameBoy {
         // Reference: https://gbdev.io/pandocs/Memory_Map.html
         match addr {
             // Boot Rom
-            0x0..=0xFF => {
-                if self.boot_rom_enabled {
-                    BOOT_ROM[addr as usize]
-                } else {
-                    *self.rom_data.get(addr as usize).unwrap_or(&0)
-                }
-            }
-
-            // Cartridge Rom
-            0x100..=0x7FFF => *self.rom_data.get(addr as usize).unwrap_or(&0),
+            0x0..=0x7FFF => self.mmu.read_byte(addr),
 
             // VRAM
             0x8000..=0x9FFF => self.ppu.get_byte(addr),
@@ -630,13 +616,7 @@ impl GameBoy {
             0xFF07 => self.tac,
 
             0xFF0F => self.ppu.vblank_irq as u8,
-            0xFF50 => {
-                if self.boot_rom_enabled {
-                    0x0
-                } else {
-                    0x1
-                }
-            }
+            0xFF50 => self.mmu.read_byte(addr), // boot rom status
             0xFFFF => self.ie,
 
             // Delegate OAM and I/O Registers to PPU
@@ -683,7 +663,7 @@ impl GameBoy {
             0xE000..=0xFDFF => unreachable!(),
 
             // Enable/disable boot rom
-            0xFF50 => self.boot_rom_enabled = byte == 0,
+            0xFF50 => self.mmu.write_byte(addr, byte),
             0xFF0F => {
                 self.ppu.vblank_irq = byte & 0x1 > 0;
             }

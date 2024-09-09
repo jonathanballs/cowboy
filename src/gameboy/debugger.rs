@@ -49,7 +49,7 @@ impl GameBoy {
                     println!("OK")
                 }
 
-                "ro" | "rom" => println!("{:#?}", &GBCHeader::new(&self.rom_data)),
+                "ro" | "rom" => println!("{:#?}", &GBCHeader::new(&self.mmu.rom)),
 
                 "r" | "registers" => println!("{:#?}", self.registers),
 
