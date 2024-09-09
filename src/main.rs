@@ -1,10 +1,9 @@
-mod bootrom;
 mod gameboy;
 pub mod instructions;
+pub mod mmu;
 mod ppu;
 mod registers;
 mod renderer;
-mod rom;
 
 use std::fs::File;
 use std::io::Read;
@@ -28,7 +27,7 @@ fn main() {
     let (tx_key, rx_key) = mpsc::channel::<(bool, Key)>();
 
     let emulator_loop = thread::spawn(move || {
-        let rom_data = read_file_to_bytes("roms/super-mario-land.gb").unwrap();
+        let rom_data = read_file_to_bytes("roms/tetris.gb").unwrap();
         let mut gameboy = GameBoy::new(rom_data, tx.clone(), rx_key);
         gameboy.start()
     });

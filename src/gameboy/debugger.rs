@@ -1,7 +1,7 @@
 use core::fmt;
 use std::io::{self, Write};
 
-use crate::{instructions::parse, rom::GBCHeader};
+use crate::{instructions::parse, mmu::rom::GBCHeader};
 
 use super::GameBoy;
 use colored::*;

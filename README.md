@@ -11,6 +11,15 @@ simplest games on the platform.
 ![Screenshot 2024-09-03 at 18 44
 30](https://github.com/user-attachments/assets/79f27012-5c56-417e-9d11-ecea3c862667)
 
+## Running
+
+You will need `rust` and `cargo` installed. By default the emulator will run
+the tetris rom from the `roms/` directory.
+
+```
+$ cargo run
+```
+
 ## References
 
 Creating this emulator was a very educational experience for me. I'd like to

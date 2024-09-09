@@ -10,8 +10,8 @@ use std::sync::Arc;
 use std::usize;
 
 use crate::{
-    bootrom::BOOT_ROM,
     instructions::{parse, r16::R16, r8::R8, Instruction},
+    mmu::bootrom::BOOT_ROM,
     ppu::PPU,
     registers::Registers,
 };
