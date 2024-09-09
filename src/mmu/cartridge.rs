@@ -2,7 +2,7 @@ use std::fmt;
 use std::slice;
 
 #[repr(C, packed)]
-pub struct GBCHeader {
+pub struct CartridgeHeader {
     padding: [u8; 0x100],
     entry_point: [u8; 4],
     nintendo_logo: [u8; 48],
@@ -21,13 +21,13 @@ pub struct GBCHeader {
     global_checksum: [u8; 2],
 }
 
-impl GBCHeader {
+impl CartridgeHeader {
     pub fn new(data: &[u8]) -> Result<Self, &'static str> {
         if data.len() < 0x150 {
             return Err("Data is too short for a valid GBC header");
         }
 
-        Ok(unsafe { std::ptr::read(data.as_ptr() as *const GBCHeader) })
+        Ok(unsafe { std::ptr::read(data.as_ptr() as *const CartridgeHeader) })
     }
 
     pub fn title(&self) -> String {
@@ -76,7 +76,7 @@ impl GBCHeader {
     }
 }
 
-impl fmt::Debug for GBCHeader {
+impl fmt::Debug for CartridgeHeader {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GBCHeader")
             .field("title", &self.title())

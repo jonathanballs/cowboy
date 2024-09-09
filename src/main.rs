@@ -5,7 +5,7 @@ pub mod mmu;
 mod renderer;
 
 use colored::*;
-use mmu::rom::GBCHeader;
+use mmu::cartridge::CartridgeHeader;
 use std::fs::File;
 use std::io::Read;
 use std::process::exit;
@@ -23,7 +23,7 @@ fn main() {
     let (tx, rx) = mpsc::channel::<PPU>();
     let (tx_key, rx_key) = mpsc::channel::<(bool, Key)>();
     let rom = read_file_to_bytes("roms/tetris.gb").unwrap();
-    let game_title = GBCHeader::new(&rom).unwrap().title();
+    let game_title = CartridgeHeader::new(&rom).unwrap().title();
 
     let _ = thread::spawn(move || emulator_loop(rom, tx, rx_key));
     window_loop(rx, tx_key, &game_title);

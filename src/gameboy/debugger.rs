@@ -1,7 +1,7 @@
 use core::fmt;
 use std::io::{self, Write};
 
-use crate::{instructions::parse, mmu::rom::GBCHeader};
+use crate::{instructions::parse, mmu::cartridge::CartridgeHeader};
 
 use super::GameBoy;
 use colored::*;
@@ -19,6 +19,7 @@ fn parse_number(s: &str) -> Option<u16> {
 impl GameBoy {
     pub fn debugger_cli(&mut self) {
         println!("{}", self.format_instruction());
+
         loop {
             print!("{}", ">>> ".cyan());
             let _ = io::stdout().flush();
@@ -52,7 +53,7 @@ impl GameBoy {
                     println!("UNSUPPORTED")
                 }
 
-                "ro" | "rom" => println!("{:#?}", &GBCHeader::new(&self.mmu.rom)),
+                "ro" | "rom" => println!("{:#?}", &CartridgeHeader::new(&self.mmu.rom)),
 
                 "r" | "registers" => println!("{:#?}", self.cpu.registers),
 

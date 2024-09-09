@@ -1,7 +1,7 @@
 pub mod bootrom;
+pub mod cartridge;
 pub mod joypad;
 pub mod ppu;
-pub mod rom;
 pub mod timer;
 
 use bootrom::BOOT_ROM;
