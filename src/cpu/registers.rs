@@ -1,10 +1,8 @@
 use std::fmt;
 
-mod flag_register;
-
-use flag_register::FlagsRegister;
-
 use crate::instructions::{r16::R16, r16mem::R16mem, r16stk::R16stk, r8::R8};
+
+use super::flag_register::FlagsRegister;
 
 pub struct Registers {
     pub a: u8,

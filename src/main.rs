@@ -1,7 +1,7 @@
-mod gameboy;
+pub mod cpu;
+pub mod gameboy;
 pub mod instructions;
 pub mod mmu;
-mod registers;
 mod renderer;
 
 use colored::*;

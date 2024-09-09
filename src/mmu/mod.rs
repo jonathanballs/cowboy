@@ -1,11 +1,13 @@
-use bootrom::BOOT_ROM;
-use joypad::Joypad;
-use ppu::PPU;
-
 pub mod bootrom;
 pub mod joypad;
 pub mod ppu;
 pub mod rom;
+pub mod timer;
+
+use bootrom::BOOT_ROM;
+use joypad::Joypad;
+use ppu::PPU;
+use timer::Timer;
 
 pub struct MMU {
     boot_rom_enabled: bool,
@@ -13,6 +15,8 @@ pub struct MMU {
     pub ram: [u8; 0xFFFF],
     pub joypad: Joypad,
     pub ppu: PPU,
+    pub timer: Timer,
+    pub ie: u8,
 }
 
 impl MMU {
@@ -23,6 +27,9 @@ impl MMU {
             ram: [0x0; 0xFFFF],
             ppu: PPU::new(),
             rom,
+            ie: 0,
+
+            timer: Timer::new(),
         }
     }
 
@@ -39,30 +46,64 @@ impl MMU {
             0x100..=0x7FFF => *self.rom.get(addr as usize).unwrap_or(&0),
             0x8000..=0x9FFF => self.ppu.get_byte(addr),
             0xC000..=0xDFFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+            0xE000..=0xFDFF => {
+                println!("tried to read echo ram");
+                dbg!(addr);
+                unreachable!()
+            }
             0xFF00 => self.joypad.read_byte(addr),
+            // Interrupt registers
+            0xFF04..=0xFF07 => self.timer.read_byte(addr),
             0xFF50 => self.boot_rom_enabled as u8,
             0xFF0F => self.ppu.vblank_irq as u8,
+
             0xFE00..=0xFF7F => self.ppu.get_byte(addr),
 
             // HRam
             0xFF80..=0xFFFE => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
+            0xFFFF => self.ie,
             _ => unreachable!(),
         }
     }
 
     pub fn write_byte(&mut self, addr: u16, value: u8) {
         match addr {
+            // ROM bank - ignore
+            0x2000 => (),
+
             0x8000..=0x9FFF => self.ppu.set_byte(addr, value),
             0xC000..=0xDFFF => self.ram[addr as usize - 0x8000] = value,
             0xFF00 => self.joypad.write_byte(addr, value),
+
+            // Serial transfer
+            0xFF01 => (),
+            0xFF02 => (),
+
+            // Timer
+            0xFF04..=0xFF07 => self.timer.write_byte(addr, value),
+
             0xFF0F => {
                 self.ppu.vblank_irq = value & 0x1 > 0;
             }
+            0xFF46 => {
+                let source_addr = (value as u16) << 8;
+                for offset in 0x0..=0x9F {
+                    self.write_byte(0xFE00 + offset, self.read_byte(source_addr + offset))
+                }
+            }
             0xFF50 => self.boot_rom_enabled = value == 0,
+
+            // Not usable. Ignore writes...
+            0xFEA0..=0xFEFF => (),
+
             0xFE00..=0xFF7F => self.ppu.set_byte(addr, value),
 
             0xFF80..=0xFFFE => self.ram[(addr - 0x8000) as usize] = value,
-            _ => unreachable!(),
+            0xFFFF => self.ie = value,
+            _ => {
+                dbg!(addr);
+                unreachable!()
+            }
         }
     }
 }

@@ -54,7 +54,7 @@ impl GameBoy {
 
                 "ro" | "rom" => println!("{:#?}", &GBCHeader::new(&self.mmu.rom)),
 
-                "r" | "registers" => println!("{:#?}", self.registers),
+                "r" | "registers" => println!("{:#?}", self.cpu.registers),
 
                 "h" | "help" => self.print_help(),
 
@@ -102,15 +102,15 @@ impl GameBoy {
     }
 
     pub fn format_instruction(&self) -> String {
-        let instruction_address = format!("{:#06X}", self.registers.pc);
+        let instruction_address = format!("{:#06X}", self.cpu.registers.pc);
 
-        let opcode = self.get_memory_byte(self.registers.pc);
-        let arg_1 = self.get_memory_byte(self.registers.pc + 1);
-        let arg_2 = self.get_memory_byte(self.registers.pc + 2);
+        let opcode = self.mmu.read_byte(self.cpu.registers.pc);
+        let arg_1 = self.mmu.read_byte(self.cpu.registers.pc + 1);
+        let arg_2 = self.mmu.read_byte(self.cpu.registers.pc + 2);
 
         let (_, instruction_length, _) = parse(opcode, arg_1, arg_2);
         let instruction_bytes = (0..instruction_length)
-            .map(|o| format!("{:x}", self.get_memory_byte(self.registers.pc + o as u16)))
+            .map(|o| format!("{:x}", self.mmu.read_byte(self.cpu.registers.pc + o as u16)))
             .collect::<Vec<String>>()
             .join("");
 
@@ -156,7 +156,7 @@ impl GameBoy {
                 print!("{:#06x}: ", start + offset);
             }
 
-            print!("{:02x}", self.get_memory_byte(start + offset));
+            print!("{:02x}", self.mmu.read_byte(start + offset));
 
             if offset % 2 == 1 {
                 print!(" ");
@@ -180,32 +180,32 @@ impl GameBoy {
 
         println!("======== interrupts ========");
         println!("           enabled   flagged");
-        println!("IME:       {}", colored_bool(self.ime));
+        println!("IME:       {}", colored_bool(self.cpu.ime));
         println!("");
         println!(
             "VBlank:    {:5}     {}",
-            colored_bool(self.ie & 0x1 > 0),
-            colored_bool(self.get_memory_byte(0xFF0F) & 0x1 > 0)
+            colored_bool(self.mmu.ie & 0x1 > 0),
+            colored_bool(self.mmu.read_byte(0xFF0F) & 0x1 > 0)
         );
         println!(
             "LCD:       {:5}     {}",
-            colored_bool(self.ie & 0x2 > 0),
-            colored_bool(self.get_memory_byte(0xFF0F) & 0x2 > 0)
+            colored_bool(self.mmu.ie & 0x2 > 0),
+            colored_bool(self.mmu.read_byte(0xFF0F) & 0x2 > 0)
         );
         println!(
             "Timer:     {:5}     {}",
-            colored_bool(self.ie & 0x4 > 0),
-            colored_bool(self.get_memory_byte(0xFF0F) & 0x4 > 0)
+            colored_bool(self.mmu.ie & 0x4 > 0),
+            colored_bool(self.mmu.read_byte(0xFF0F) & 0x4 > 0)
         );
         println!(
             "Serial:    {:5}     {}",
-            colored_bool(self.ie & 0x8 > 0),
-            colored_bool(self.get_memory_byte(0xFF0F) & 0x8 > 0)
+            colored_bool(self.mmu.ie & 0x8 > 0),
+            colored_bool(self.mmu.read_byte(0xFF0F) & 0x8 > 0)
         );
         println!(
             "Joypad:    {:5}     {}",
-            colored_bool(self.ie & 0x16 > 0),
-            colored_bool(self.get_memory_byte(0xFF0F) & 0x16 > 0)
+            colored_bool(self.mmu.ie & 0x16 > 0),
+            colored_bool(self.mmu.read_byte(0xFF0F) & 0x16 > 0)
         );
 
         println!("");
@@ -232,11 +232,13 @@ impl GameBoy {
 impl fmt::Debug for GameBoy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GameBoy")
-            .field("registers", &self.registers)
-            .field("ime", &self.ime)
-            .field("ie", &self.ie)
-            .field("instruction", &self.ins())
-            .field("instruction_raw", &self.get_memory_byte(self.registers.pc))
+            .field("cpu", &self.cpu)
+            .field("ie", &self.mmu.ie)
+            //.field("instruction", &self.ins())
+            .field(
+                "instruction_raw",
+                &self.mmu.read_byte(self.cpu.registers.pc),
+            )
             .finish()
     }
 }
