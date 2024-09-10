@@ -45,6 +45,8 @@ impl GameBoy {
 
                 "d" | "debug" => println!("{:#?}", &self),
 
+                "ppu" => println!("{:#?}", &self.mmu.ppu),
+
                 "f" | "flush" => {
                     //pub fn flush(&self) {
                     //    self.tx.send(self.clone()).unwrap();

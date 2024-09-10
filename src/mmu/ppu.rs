@@ -165,8 +165,14 @@ impl PPU {
         return result;
     }
 
-    pub fn get_tile(&self, tile_index: usize) -> Tile {
-        let start_address = 0x8000 + (tile_index * 16) as u16;
+    pub fn get_tile(&self, tile_index: u8) -> Tile {
+        let start_address = if self.lcdc & 0x10 > 0 {
+            0x8000 + ((tile_index as u16) * 16) as u16
+        } else {
+            let offset = ((tile_index as i8) as i16) * 16;
+            0x9000_u16.wrapping_add(offset as u16)
+        };
+
         let mut ret = [[0u8; 8]; 8];
 
         for i in 0..8 {

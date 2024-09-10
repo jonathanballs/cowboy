@@ -77,7 +77,7 @@ pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &Stri
                 let tile_index = ppu.get_byte(0x9800 + i);
 
                 render_tile(
-                    ppu.get_tile(tile_index as usize),
+                    ppu.get_tile(tile_index),
                     &mut buffer,
                     (i as usize * 8) % 256,
                     ((i as usize / 32) * 8).wrapping_sub(ppu.scy as usize),
@@ -94,7 +94,7 @@ pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &Stri
                 //let flags = ppu.get_byte(start_position + 3);
 
                 render_tile(
-                    ppu.get_tile(tile_index as usize),
+                    ppu.get_tile(tile_index),
                     &mut buffer,
                     x_position.wrapping_sub(8) as usize,
                     y_position.wrapping_sub(16) as usize,

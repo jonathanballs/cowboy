@@ -83,8 +83,6 @@ impl MMU {
 
             // Interrupt enable
             0xFFFF => self.ie,
-
-            _ => unreachable!(),
         }
     }
 

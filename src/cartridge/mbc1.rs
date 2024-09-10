@@ -21,13 +21,15 @@ impl MBC for MBC1 {
         match addr {
             0x0..=0x3FFF => self.rom[addr as usize],
             0x4000..=0x7FFF => {
-                let bank_number: u16 = if self.rom_bank == 0 {
+                let bank: u16 = if self.rom_bank == 0 {
                     1
                 } else {
                     self.rom_bank as u16
                 };
 
-                return self.rom[(bank_number * 0x4000 | addr) as usize];
+                let idx = bank * 0x4000 | (addr & 0x3FFF);
+
+                return self.rom[idx as usize];
             }
             0xA000..=0xBFFF => self.ram[addr as usize - 0xA000],
             _ => {
