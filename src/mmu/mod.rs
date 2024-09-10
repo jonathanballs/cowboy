@@ -1,9 +1,9 @@
 pub mod bootrom;
-pub mod cartridge;
 pub mod joypad;
 pub mod ppu;
 pub mod timer;
 
+use crate::cartridge::Cartridge;
 use bootrom::BOOT_ROM;
 use joypad::Joypad;
 use ppu::PPU;
@@ -11,7 +11,7 @@ use timer::Timer;
 
 pub struct MMU {
     boot_rom_enabled: bool,
-    pub rom: Vec<u8>,
+    pub cartridge: Cartridge,
     pub ram: [u8; 0xFFFF],
     pub joypad: Joypad,
     pub ppu: PPU,
@@ -22,11 +22,11 @@ pub struct MMU {
 impl MMU {
     pub fn new(rom: Vec<u8>) -> MMU {
         MMU {
+            cartridge: Cartridge::new(rom),
             boot_rom_enabled: true,
             joypad: Joypad::new(),
             ram: [0x0; 0xFFFF],
             ppu: PPU::new(),
-            rom,
             ie: 0,
 
             timer: Timer::new(),
@@ -40,12 +40,12 @@ impl MMU {
                 if self.boot_rom_enabled {
                     BOOT_ROM[addr as usize]
                 } else {
-                    *self.rom.get(addr as usize).unwrap_or(&0)
+                    self.cartridge.read_byte(addr)
                 }
             }
 
             // ROM
-            0x100..=0x7FFF => *self.rom.get(addr as usize).unwrap_or(&0),
+            0x100..=0x7FFF => self.cartridge.read_byte(addr),
 
             // VRAM
             0x8000..=0x9FFF => self.ppu.get_byte(addr),

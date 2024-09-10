@@ -1,7 +1,7 @@
 use core::fmt;
 use std::io::{self, Write};
 
-use crate::{instructions::parse, mmu::cartridge::CartridgeHeader};
+use crate::instructions::parse;
 
 use super::GameBoy;
 use colored::*;
@@ -53,7 +53,7 @@ impl GameBoy {
                     println!("UNSUPPORTED")
                 }
 
-                "ro" | "rom" => println!("{:#?}", &CartridgeHeader::new(&self.mmu.rom)),
+                "ro" | "rom" => println!("{:#?}", self.mmu.cartridge.header),
 
                 "r" | "registers" => println!("{:#?}", self.cpu.registers),
 

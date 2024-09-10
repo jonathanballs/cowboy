@@ -1,6 +1,13 @@
 use std::fmt;
 use std::slice;
 
+pub enum CartridgeType {
+    RomOnly,
+    Mbc1,
+    Mbc1Ram,
+    Mbc1RamBattery,
+}
+
 #[repr(C, packed)]
 pub struct CartridgeHeader {
     padding: [u8; 0x100],
@@ -34,6 +41,17 @@ impl CartridgeHeader {
         String::from_utf8_lossy(&self.title)
             .trim_end_matches('\0')
             .to_string()
+    }
+
+    pub fn cartridge_type(&self) -> CartridgeType {
+        match self.cartridge_type {
+            0x00 => CartridgeType::RomOnly,
+            0x01 => CartridgeType::Mbc1,
+            0x02 => CartridgeType::Mbc1Ram,
+            0x03 => CartridgeType::Mbc1RamBattery,
+
+            _ => todo!(),
+        }
     }
 
     pub fn cartridge_type_name(&self) -> &'static str {

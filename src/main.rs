@@ -1,11 +1,12 @@
+pub mod cartridge;
 pub mod cpu;
 pub mod gameboy;
 pub mod instructions;
 pub mod mmu;
 mod renderer;
 
+use cartridge::header::CartridgeHeader;
 use colored::*;
-use mmu::cartridge::CartridgeHeader;
 use std::fs::File;
 use std::io::Read;
 use std::process::exit;
