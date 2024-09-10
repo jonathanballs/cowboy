@@ -20,7 +20,8 @@ pub struct PPU {
 
     pub scy: u8,
     pub scx: u8,
-    pub line: u8,
+    pub ly: u8,
+    pub lyc: u8,
     pub lcdc: u8,
     pub bgp: u8,
     pub modeclock: u32,
@@ -45,7 +46,8 @@ impl PPU {
             scy: 0,
             scx: 0,
             bgp: 0,
-            line: 0,
+            ly: 0,
+            lyc: 0,
             lcdc: 0,
             modeclock: 32,
             stat: 0,
@@ -72,18 +74,18 @@ impl PPU {
             // Full line takes 114 ticks
             if self.modeclock >= 456 {
                 self.modeclock -= 456;
-                self.line = (self.line + 1) % 154;
+                self.ly = (self.ly + 1) % 154;
 
                 // Enter mode 1 (VBLANK)
-                if self.line == 144 {
+                if self.ly == 144 {
                     self.vblank_irq = true
                 }
 
                 // Frame finished - flush to screen
-                if self.line == 0 {
+                if self.ly == 0 {
                     // Calculate how long to sleep
                     let elapsed = self.last_frame_time.elapsed();
-                    let frame_duration = Duration::from_secs_f64(1.0 / 60.0);
+                    let frame_duration = Duration::from_secs_f64(1.0 / 240.0);
 
                     if elapsed < frame_duration {
                         thread::sleep(frame_duration - elapsed);
@@ -111,7 +113,8 @@ impl PPU {
             0xFF41 => self.stat,
             0xFF42 => self.scy,
             0xFF43 => self.scx,
-            0xFF44 => self.line,
+            0xFF44 => self.ly,
+            0xFF45 => self.lyc,
             0xFF47 => self.bgp,
 
             0xFF4A => self.wy,
@@ -141,6 +144,7 @@ impl PPU {
             0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,
             0xFF43 => self.scx = value,
+            0xFF45 => self.lyc = value,
             0xFF47 => self.bgp = value,
             0xFF48 => self.obj_palette_0 = value,
             0xFF49 => self.obj_palette_1 = value,

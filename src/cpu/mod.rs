@@ -6,6 +6,7 @@ use crate::{
     mmu::MMU,
 };
 
+mod alu;
 mod flag_register;
 mod registers;
 
@@ -23,10 +24,10 @@ impl CPU {
         }
     }
 
-    pub fn step(&mut self, memory: &mut MMU) -> u8 {
-        let opcode = memory.read_byte(self.registers.pc);
-        let arg_1 = memory.read_byte(self.registers.pc + 1);
-        let arg_2 = memory.read_byte(self.registers.pc + 2);
+    pub fn step(&mut self, mmu: &mut MMU) -> u8 {
+        let opcode = mmu.read_byte(self.registers.pc);
+        let arg_1 = mmu.read_byte(self.registers.pc + 1);
+        let arg_2 = mmu.read_byte(self.registers.pc + 2);
 
         let mut just_set_ei = false;
         let (instruction, mut bytes, cycles) = parse(opcode, arg_1, arg_2);
@@ -35,38 +36,28 @@ impl CPU {
             Instruction::Nop => (),
 
             // LOAD instructions
-            Instruction::LdImm16memA(addr) => {
-                memory.write_byte(addr, self.get_r8_byte(memory, R8::A));
-            }
-            Instruction::LdR16Imm16mem(reg, value) => {
-                self.registers.set_r16(reg, value);
-            }
+            Instruction::LdImm16memA(addr) => mmu.write_byte(addr, self.get_r8_byte(mmu, R8::A)),
+            Instruction::LdR16Imm16mem(reg, value) => self.registers.set_r16(reg, value),
             Instruction::LdR16memA(r16) => {
-                let addr = self.registers.get_r16_mem(r16);
-                memory.write_byte(addr, self.registers.a);
+                mmu.write_byte(self.registers.get_r16_mem(r16), self.registers.a)
             }
-            Instruction::LdR8Imm8(reg, value) => {
-                self.set_r8_byte(memory, reg, value);
-            }
+            Instruction::LdR8Imm8(reg, value) => self.set_r8_byte(mmu, reg, value),
             Instruction::LdhCmemA => {
-                memory.write_byte(0xFF00 + self.registers.c as u16, self.registers.a);
+                mmu.write_byte(0xFF00 + self.registers.c as u16, self.registers.a)
             }
             Instruction::LdR8R8(dest, src) => {
-                self.set_r8_byte(memory, dest, self.get_r8_byte(memory, src));
+                self.set_r8_byte(mmu, dest, self.get_r8_byte(mmu, src))
             }
             Instruction::LdhImm8memA(addr) => {
-                memory.write_byte(0xFF00 + addr as u16, self.get_r8_byte(memory, R8::A));
+                mmu.write_byte(0xFF00 + addr as u16, self.get_r8_byte(mmu, R8::A))
             }
             Instruction::LdhAImm8mem(addr) => {
-                self.registers.a = memory.read_byte(0xFF00 + addr as u16);
+                self.registers.a = mmu.read_byte(0xFF00 + addr as u16)
             }
             Instruction::LdAR16mem(reg) => {
-                let addr = self.registers.get_r16_mem(reg);
-                self.registers.a = memory.read_byte(addr);
+                self.registers.a = mmu.read_byte(self.registers.get_r16_mem(reg))
             }
-            Instruction::LdAImm16mem(imm16) => {
-                self.registers.a = memory.read_byte(imm16);
-            }
+            Instruction::LdAImm16mem(imm16) => self.registers.a = mmu.read_byte(imm16),
 
             // Jump instructions
             Instruction::JpImm16(addr) => self.registers.pc = addr.wrapping_sub(3),
@@ -90,106 +81,30 @@ impl CPU {
             }
 
             // Increment/Decrement
-            Instruction::IncR8(reg) => {
-                let value = self.get_r8_byte(memory, reg);
-                let result = value.wrapping_add(1);
-                self.set_r8_byte(memory, reg, result);
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = false;
-                // Half carry will occur when the lower nibble was 0b1111
-                self.registers.f.half_carry = (value & 0xF) == 0xF;
-            }
-            Instruction::DecR8(reg) => {
-                let value = self.get_r8_byte(memory, reg);
-                let result = value.wrapping_sub(1);
-                self.set_r8_byte(memory, reg, result);
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = false;
-                // Half carry will occur when the lower nibble was 0b0000
-                self.registers.f.half_carry = (value & 0xF) == 0x0;
-            }
-            Instruction::IncR16(reg) => {
-                let value = self.registers.get_r16(reg);
-                let result = value.wrapping_add(1);
-                self.registers.set_r16(reg, result);
-            }
-            Instruction::DecR16(reg) => {
-                let value = self.registers.get_r16(reg);
-                let result = value.wrapping_sub(1);
-                self.registers.set_r16(reg, result);
-            }
+            Instruction::IncR8(reg) => self.inc(mmu, reg),
+            Instruction::DecR8(reg) => self.dec(mmu, reg),
+            Instruction::IncR16(reg) => self.inc_r16(reg),
+            Instruction::DecR16(reg) => self.dec_r16(reg),
 
             // Bitwise operations
-            Instruction::AndAR8(reg) => {
-                let value = self.get_r8_byte(memory, reg);
-                let result = value & self.registers.a;
-                self.registers.a = result;
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = false;
-                self.registers.f.half_carry = true;
-                self.registers.f.carry = false;
-            }
-            Instruction::AndAImm8(imm8) => {
-                let result = imm8 & self.registers.a;
-                self.registers.a = result;
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = false;
-                self.registers.f.half_carry = true;
-                self.registers.f.carry = false;
-            }
-            Instruction::OrAImm8(value) => {
-                let result = value | self.registers.a;
-                self.registers.a = result;
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.carry = false;
-                self.registers.f.half_carry = false;
-                self.registers.f.subtract = false;
-            }
-            Instruction::OrAR8(reg) => {
-                let value = self.get_r8_byte(memory, reg);
-                let result = value | self.registers.a;
-                self.registers.a = result;
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.carry = false;
-                self.registers.f.half_carry = false;
-                self.registers.f.subtract = false;
-            }
-            Instruction::XorAImm8(value) => {
-                let result = value ^ self.registers.a;
-                self.registers.a = result;
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.carry = false;
-                self.registers.f.half_carry = false;
-                self.registers.f.subtract = false;
-            }
-            Instruction::XorAR8(reg) => {
-                let result = self.registers.a ^ self.get_r8_byte(memory, reg);
-                self.registers.a = result;
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = false;
-                self.registers.f.half_carry = false;
-                self.registers.f.carry = false;
-            }
+            Instruction::AndAR8(reg) => self.and(self.get_r8_byte(mmu, reg)),
+            Instruction::AndAImm8(imm8) => self.and(imm8),
+            Instruction::OrAImm8(imm8) => self.or(imm8),
+            Instruction::OrAR8(reg) => self.or(self.get_r8_byte(mmu, reg)),
+            Instruction::XorAImm8(imm8) => self.xor(imm8),
+            Instruction::XorAR8(reg) => self.xor(self.get_r8_byte(mmu, reg)),
 
             // Bit manipulation and checking
             Instruction::SetB3R8(bit_offset, reg) => {
-                let result = self.get_r8_byte(memory, reg) | 1 << bit_offset;
-                self.set_r8_byte(memory, reg, result);
+                let result = self.get_r8_byte(mmu, reg) | 1 << bit_offset;
+                self.set_r8_byte(mmu, reg, result);
             }
             Instruction::ResB3R8(bit_offset, reg) => {
-                let result = self.get_r8_byte(memory, reg) & !(1 << bit_offset);
-                self.set_r8_byte(memory, reg, result);
+                let result = self.get_r8_byte(mmu, reg) & !(1 << bit_offset);
+                self.set_r8_byte(mmu, reg, result);
             }
             Instruction::BitB3R8(i, reg) => {
-                let result = self.get_r8_byte(memory, reg) & (1 << i);
+                let result = self.get_r8_byte(mmu, reg) & (1 << i);
 
                 self.registers.f.zero = result == 0;
                 self.registers.f.subtract = false;
@@ -199,39 +114,39 @@ impl CPU {
             // Call and return
             Instruction::CallCondImm16(cond, addr) => {
                 if self.registers.f.evaluate_condition(cond) {
-                    self.set_memory_word(memory, self.registers.sp - 2, self.registers.pc + 3);
+                    self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 3);
                     self.registers.sp -= 2;
                     self.registers.pc = addr;
                     bytes = 0;
                 }
             }
             Instruction::CallImm16(addr) => {
-                self.set_memory_word(memory, self.registers.sp - 2, self.registers.pc + 3);
+                self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 3);
                 self.registers.sp -= 2;
                 self.registers.pc = addr;
                 bytes = 0;
             }
             Instruction::RstTgt3(addr) => {
-                self.set_memory_word(memory, self.registers.sp - 2, self.registers.pc + 1);
+                self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 1);
                 self.registers.sp -= 2;
                 self.registers.pc = addr as u16;
                 bytes = 0;
             }
             Instruction::Ret => {
-                self.registers.pc = self.get_memory_word(memory, self.registers.sp);
+                self.registers.pc = self.get_memory_word(mmu, self.registers.sp);
                 self.registers.sp += 2;
                 bytes = 0;
             }
             Instruction::RetCond(cond) => {
                 if self.registers.f.evaluate_condition(cond) {
-                    let addr = self.get_memory_word(memory, self.registers.sp);
+                    let addr = self.get_memory_word(mmu, self.registers.sp);
                     self.registers.sp += 2;
                     self.registers.pc = addr;
                     bytes = 0;
                 }
             }
             Instruction::Reti => {
-                self.registers.pc = self.get_memory_word(memory, self.registers.sp);
+                self.registers.pc = self.get_memory_word(mmu, self.registers.sp);
                 self.registers.sp += 2;
                 self.ime = true;
                 bytes = 0;
@@ -239,107 +154,30 @@ impl CPU {
 
             // Push and pop
             Instruction::PushR16stk(reg) => {
-                self.set_memory_word(
-                    memory,
-                    self.registers.sp - 2,
-                    self.registers.get_r16_stk(reg),
-                );
+                self.set_memory_word(mmu, self.registers.sp - 2, self.registers.get_r16_stk(reg));
                 self.registers.sp -= 2;
             }
             Instruction::PopR16stk(reg) => {
-                let value = self.get_memory_word(memory, self.registers.sp);
+                let value = self.get_memory_word(mmu, self.registers.sp);
                 self.registers.set_r16_stk(reg, value);
                 self.registers.sp += 2;
             }
 
             // Maths instructions
-            Instruction::AddAR8(reg) => {
-                let a = self.registers.a;
-                let b = self.get_r8_byte(memory, reg);
-                let result = a.wrapping_add(b);
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = false;
-                // Carry if a and b go over 0xFF
-                self.registers.f.carry = (a as u16) + (b as u16) > 0xFF;
-                // Half carry if the lower nibbles of a and b go over 0xF
-                self.registers.f.half_carry = (a & 0xF) + (b & 0xF) > 0xF;
-
-                self.registers.a = result;
-            }
-            Instruction::AddAImm8(b) => {
-                let a = self.registers.a;
-                let result = a.wrapping_add(b);
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = false;
-                // Carry if a and b go over 0xFF
-                self.registers.f.carry = (a as u16) + (b as u16) > 0xFF;
-                // Half carry if the lower nibbles of a and b go over 0xF
-                self.registers.f.half_carry = (a & 0xF) + (b & 0xF) > 0xF;
-
-                self.registers.a = result;
-            }
-            Instruction::AddHlR16(reg) => {
-                let a = self.registers.get_r16(R16::HL);
-                let b = self.registers.get_r16(reg);
-                let result = a.wrapping_add(b);
-
-                self.registers.f.half_carry = (a & 0x0FFF) + (b & 0x0FFF) > 0x0FFF;
-                self.registers.f.subtract = false;
-                self.registers.f.carry = result < a;
-
-                self.registers.set_r16(R16::HL, result);
-            }
-            Instruction::SubAR8(reg) => {
-                let a = self.registers.a;
-                let b = self.get_r8_byte(memory, reg);
-                let result = a.wrapping_sub(b);
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = true;
-                self.registers.f.half_carry = (a & 0xF) < (b & 0xF);
-                self.registers.f.carry = a < b;
-
-                self.registers.a = result;
-            }
-            Instruction::SubAImm8(b) => {
-                let a = self.registers.a;
-                let result = a.wrapping_sub(b);
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = true;
-                self.registers.f.half_carry = (a & 0xF) < (b & 0xF);
-                self.registers.f.carry = a < b;
-
-                self.registers.a = result;
-            }
-            Instruction::CpAImm8(b) => {
-                let a = self.registers.a;
-                let result = a.wrapping_sub(b);
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = true;
-                self.registers.f.half_carry = (a & 0xF) < (b & 0xF);
-                self.registers.f.carry = a < b;
-            }
-            Instruction::CpAR8(reg) => {
-                let a = self.registers.a;
-                let b = self.get_r8_byte(memory, reg);
-                let result = a.wrapping_sub(b);
-
-                self.registers.f.zero = result == 0;
-                self.registers.f.subtract = true;
-                self.registers.f.half_carry = (a & 0xF) < (b & 0xF);
-                self.registers.f.carry = a < b;
-            }
+            Instruction::AddAR8(reg) => self.add(self.get_r8_byte(mmu, reg)),
+            Instruction::AddAImm8(b) => self.add(b),
+            Instruction::AddHlR16(reg) => self.add_r16(R16::HL, self.registers.get_r16(reg)),
+            Instruction::SubAR8(reg) => self.sub(self.get_r8_byte(mmu, reg)),
+            Instruction::SubAImm8(b) => self.sub(b),
+            Instruction::CpAImm8(b) => self.cp(b),
+            Instruction::CpAR8(reg) => self.cp(self.get_r8_byte(mmu, reg)),
 
             // Bit rotation
             Instruction::RlR8(reg) => {
-                let value = self.get_r8_byte(memory, reg);
+                let value = self.get_r8_byte(mmu, reg);
                 let result = (value << 1) | self.registers.f.carry as u8;
 
-                self.set_r8_byte(memory, reg, result);
+                self.set_r8_byte(mmu, reg, result);
 
                 self.registers.f.zero = result == 0;
                 self.registers.f.subtract = false;
@@ -347,10 +185,10 @@ impl CPU {
                 self.registers.f.carry = value >> 7 == 1;
             }
             Instruction::Rla => {
-                let value = self.get_r8_byte(memory, R8::A);
+                let value = self.get_r8_byte(mmu, R8::A);
                 let result = (value << 1) | self.registers.f.carry as u8;
 
-                self.set_r8_byte(memory, R8::A, result);
+                self.set_r8_byte(mmu, R8::A, result);
 
                 // zero register is always false for RLA
                 self.registers.f.zero = false;
@@ -360,9 +198,9 @@ impl CPU {
             }
 
             Instruction::SrlR8(reg) => {
-                let value = self.get_r8_byte(memory, reg);
+                let value = self.get_r8_byte(mmu, reg);
                 let result = value >> 1;
-                self.set_r8_byte(memory, reg, result);
+                self.set_r8_byte(mmu, reg, result);
 
                 self.registers.f.zero = result == 0;
                 self.registers.f.subtract = false;
@@ -370,9 +208,9 @@ impl CPU {
                 self.registers.f.carry = value & 1 == 1;
             }
             Instruction::SlaR8(reg) => {
-                let value = self.get_r8_byte(memory, R8::A);
+                let value = self.get_r8_byte(mmu, R8::A);
                 let new_value = (value << 1) | self.registers.f.carry as u8;
-                self.set_r8_byte(memory, reg, new_value);
+                self.set_r8_byte(mmu, reg, new_value);
 
                 self.registers.f.carry = value >> 7 == 1;
                 self.registers.f.half_carry = false;
@@ -395,9 +233,9 @@ impl CPU {
             }
 
             Instruction::SwapR8(reg) => {
-                let register_value = self.get_r8_byte(memory, reg.clone());
+                let register_value = self.get_r8_byte(mmu, reg.clone());
                 let swapped = (register_value >> 4) | (register_value << 4);
-                self.set_r8_byte(memory, reg, swapped);
+                self.set_r8_byte(mmu, reg, swapped);
 
                 self.registers.f.zero = swapped == 0;
                 self.registers.f.carry = false;
@@ -431,7 +269,7 @@ impl CPU {
                 self.registers.f.carry = set_carry;
             }
             Instruction::AdcAR8(reg) => {
-                let value = self.get_r8_byte(memory, reg);
+                let value = self.get_r8_byte(mmu, reg);
                 let result = self
                     .registers
                     .a
@@ -463,18 +301,18 @@ impl CPU {
         };
 
         self.registers.pc += bytes as u16;
-        memory.ppu.do_cycle(cycles as u32 / 4);
+        mmu.ppu.do_cycle(cycles as u32 / 4);
 
         // Increase DIV register
-        memory.timer.do_cycles(cycles);
+        mmu.timer.do_cycles(cycles);
         // Handle interrupts
         if self.ime && !just_set_ei {
-            if memory.read_byte(0xFF0F) & 1 > 0 && memory.ppu.vblank_irq {
+            if mmu.read_byte(0xFF0F) & 1 > 0 && mmu.ppu.vblank_irq {
                 // Call 0x40
-                memory.ppu.vblank_irq = false;
+                mmu.ppu.vblank_irq = false;
                 self.ime = false;
 
-                self.set_memory_word(memory, self.registers.sp - 2, self.registers.pc + 3);
+                self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 3);
                 self.registers.sp -= 2;
                 self.registers.pc = 0x40;
             }
