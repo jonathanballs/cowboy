@@ -197,6 +197,14 @@ impl CPU {
             }
 
             // Call and return
+            Instruction::CallCondImm16(cond, addr) => {
+                if self.registers.f.evaluate_condition(cond) {
+                    self.set_memory_word(memory, self.registers.sp - 2, self.registers.pc + 3);
+                    self.registers.sp -= 2;
+                    self.registers.pc = addr;
+                    bytes = 0;
+                }
+            }
             Instruction::CallImm16(addr) => {
                 self.set_memory_word(memory, self.registers.sp - 2, self.registers.pc + 3);
                 self.registers.sp -= 2;
@@ -447,6 +455,7 @@ impl CPU {
                     self.ime = true;
                 }
             }
+            Instruction::Halt => bytes = 0,
             _ => {
                 println!("{}", "Sorry cowboy but it looks like that instruction just ain't handled \nyet - get back out to the ranch and fix that dang emulator!".yellow());
                 todo!();

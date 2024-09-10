@@ -1,6 +1,7 @@
 use std::fmt;
 use std::slice;
 
+#[derive(Debug)]
 pub enum CartridgeType {
     RomOnly,
     Mbc1,

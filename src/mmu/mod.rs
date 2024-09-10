@@ -50,6 +50,9 @@ impl MMU {
             // VRAM
             0x8000..=0x9FFF => self.ppu.get_byte(addr),
 
+            // Cartridge RAM
+            0xA000..=0xBFFF => self.cartridge.read_byte(addr),
+
             // Working RAM
             0xC000..=0xDFFF => *self.ram.get((addr - 0x8000) as usize).unwrap_or(&0),
 
@@ -88,10 +91,13 @@ impl MMU {
     pub fn write_byte(&mut self, addr: u16, value: u8) {
         match addr {
             // ROM bank - ignore
-            0x2000 => (),
+            0x0..=0x7FFF => self.cartridge.write_byte(addr, value),
 
             // VRAM
             0x8000..=0x9FFF => self.ppu.set_byte(addr, value),
+
+            // Cartridge RAM
+            0xA000..=0xBFFF => self.cartridge.write_byte(addr, value),
 
             // Working RAM
             0xC000..=0xDFFF => self.ram[addr as usize - 0x8000] = value,

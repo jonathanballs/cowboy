@@ -14,4 +14,8 @@ impl MBC for MBC0 {
     fn read_byte(&self, addr: u16) -> u8 {
         self.rom[addr as usize]
     }
+
+    fn write_byte(&mut self, _addr: u16, _value: u8) {
+        ();
+    }
 }

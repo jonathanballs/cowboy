@@ -23,7 +23,7 @@ use renderer::window_loop;
 fn main() {
     let (tx, rx) = mpsc::channel::<PPU>();
     let (tx_key, rx_key) = mpsc::channel::<(bool, Key)>();
-    let rom = read_file_to_bytes("roms/tetris.gb").unwrap();
+    let rom = read_file_to_bytes("roms/super-mario-land.gb").unwrap();
     let game_title = CartridgeHeader::new(&rom).unwrap().title();
 
     let _ = thread::spawn(move || emulator_loop(rom, tx, rx_key));
@@ -55,6 +55,10 @@ fn emulator_loop(rom: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) {
             gameboy.debugger_enabled = true;
         }
         paused.store(false, Ordering::SeqCst);
+
+        if gameboy.debugger_enabled {
+            gameboy.debugger_cli()
+        }
 
         // Step forward
         gameboy.step();
