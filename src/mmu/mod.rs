@@ -59,7 +59,6 @@ impl MMU {
             // Echo RAM
             0xE000..=0xFDFF => {
                 println!("tried to read echo ram");
-                dbg!(addr);
                 unreachable!()
             }
 

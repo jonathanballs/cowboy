@@ -35,17 +35,17 @@ impl CPU {
      * Call and Return
      *
      */
-    pub(in crate::cpu) fn call(&mut self, mmu: &mut MMU, addr: u16) {
-        self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 3);
-        self.registers.sp -= 2;
-        self.registers.pc = addr;
-    }
-
-    pub(in crate::cpu) fn call_cond(&mut self, mmu: &mut MMU, cond: Cond, addr: u16) {
-        if self.registers.f.evaluate_condition(cond) {
-            self.call(mmu, addr)
-        }
-    }
+    //pub(in crate::cpu) fn call(&mut self, mmu: &mut MMU, addr: u16) {
+    //    self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 3);
+    //    self.registers.sp -= 2;
+    //    self.registers.pc = addr;
+    //}
+    //
+    //pub(in crate::cpu) fn call_cond(&mut self, mmu: &mut MMU, cond: Cond, addr: u16) {
+    //    if self.registers.f.evaluate_condition(cond) {
+    //        self.call(mmu, addr)
+    //    }
+    //}
 
     pub(in crate::cpu) fn rst_tgt3(&mut self, mmu: &mut MMU, addr: u16) {
         self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 1);

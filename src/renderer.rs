@@ -16,13 +16,32 @@ fn palette(id: u8) -> u32 {
     }
 }
 
-fn render_tile(tile: Tile, buffer: &mut Vec<u32>, x: usize, y: usize) {
+fn render_tile(
+    buffer: &mut Vec<u32>,
+    tile: Tile,
+    x: usize,
+    y: usize,
+    flags: u8,
+    transparency: bool,
+) {
+    let x_flip = (flags & 0x20) > 0;
+    let y_flip = (flags & 0x40) > 0;
+
     for tile_y in 0..8 {
         for tile_x in 0..8 {
-            let x_offset = x + tile_x;
-            let y_offset = y.wrapping_add(tile_y).wrapping_mul(WIDTH);
+            let x_offset = if x_flip { (x + 8) - tile_x } else { x + tile_x };
+
+            let y_offset = if y_flip {
+                y.wrapping_add(8).wrapping_sub(tile_y).wrapping_mul(WIDTH)
+            } else {
+                y.wrapping_add(tile_y).wrapping_mul(WIDTH)
+            };
 
             if x_offset >= WIDTH || y.wrapping_add(tile_y) >= HEIGHT {
+                continue;
+            }
+
+            if transparency && tile[tile_x][tile_y] == 0 {
                 continue;
             }
 
@@ -77,10 +96,12 @@ pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &Stri
                 let tile_index = ppu.get_byte(0x9800 + i);
 
                 render_tile(
-                    ppu.get_tile(tile_index),
                     &mut buffer,
-                    (i as usize * 8) % 256,
+                    ppu.get_tile(tile_index),
+                    (ppu.scx as usize).wrapping_add(i as usize * 8) % 256,
                     ((i as usize / 32) * 8).wrapping_sub(ppu.scy as usize),
+                    0x0,
+                    false,
                 )
             }
 
@@ -91,13 +112,15 @@ pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &Stri
 
                 let x_position = ppu.get_byte(start_position + 1);
                 let tile_index = ppu.get_byte(start_position + 2);
-                //let flags = ppu.get_byte(start_position + 3);
+                let flags = ppu.get_byte(start_position + 3);
 
                 render_tile(
-                    ppu.get_tile(tile_index),
                     &mut buffer,
+                    ppu.get_object(tile_index),
                     x_position.wrapping_sub(8) as usize,
                     y_position.wrapping_sub(16) as usize,
+                    flags,
+                    true,
                 );
             }
         }

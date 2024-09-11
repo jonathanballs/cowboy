@@ -89,6 +89,18 @@ impl CPU {
         self.registers.f.subtract = true;
     }
 
+    pub(in crate::cpu) fn ccf(&mut self) {
+        self.registers.f.subtract = false;
+        self.registers.f.half_carry = false;
+        self.registers.f.carry = !self.registers.f.carry;
+    }
+
+    pub(in crate::cpu) fn scf(&mut self) {
+        self.registers.f.subtract = false;
+        self.registers.f.half_carry = false;
+        self.registers.f.carry = true;
+    }
+
     pub(in crate::cpu) fn daa(&mut self) {
         let mut correction = 0;
         let mut set_carry = false;

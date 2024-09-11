@@ -58,6 +58,8 @@ impl CPU {
             Instruction::CpAR8(reg) => self.cp(self.get_r8_byte(mmu, reg)),
             Instruction::SubAImm8(b) => self.sub(b),
             Instruction::SubAR8(reg) => self.sub(self.get_r8_byte(mmu, reg)),
+            Instruction::SbcAR8(r) => self.sbc(self.get_r8_byte(mmu, r)),
+            Instruction::SbcAImm8(n) => self.sbc(n),
 
             // Bitwise operations, checking and manipulation
             Instruction::AndAR8(reg) => self.and(self.get_r8_byte(mmu, reg)),
@@ -69,7 +71,18 @@ impl CPU {
             Instruction::SetB3R8(bit_index, reg) => self.set(mmu, reg, bit_index),
             Instruction::ResB3R8(bit_index, reg) => self.res(mmu, reg, bit_index),
             Instruction::BitB3R8(bit_index, reg) => self.bit(mmu, reg, bit_index),
+            Instruction::Ccf => self.ccf(),
+
+            // Bit rotation
+            Instruction::RlR8(reg) => self.rl(mmu, reg),
+            Instruction::Rla => self.rla(mmu),
+            Instruction::SrlR8(reg) => self.srl(mmu, reg),
+            Instruction::SlaR8(reg) => self.sla(mmu, reg),
+            Instruction::Cpl => self.cpl(),
+            Instruction::Rlca => self.rlca(),
+            Instruction::Daa => self.daa(),
             Instruction::SwapR8(reg) => self.swap(mmu, reg),
+            Instruction::Scf => self.scf(),
 
             // Jump instructions
             Instruction::JpImm16(addr) => self.jp(addr.wrapping_sub(length)),
@@ -95,15 +108,6 @@ impl CPU {
             Instruction::Reti => self.reti(mmu),
             Instruction::PushR16stk(reg) => self.push(mmu, self.registers.get_r16_stk(reg)),
             Instruction::PopR16stk(reg) => self.pop(mmu, reg),
-
-            // Bit rotation
-            Instruction::RlR8(reg) => self.rl(mmu, reg),
-            Instruction::Rla => self.rla(mmu),
-            Instruction::SrlR8(reg) => self.srl(mmu, reg),
-            Instruction::SlaR8(reg) => self.sla(mmu, reg),
-            Instruction::Cpl => self.cpl(),
-            Instruction::Rlca => self.rlca(),
-            Instruction::Daa => self.daa(),
 
             // Interrupt enable
             Instruction::Di => self.ime = false,

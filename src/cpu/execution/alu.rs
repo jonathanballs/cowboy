@@ -135,4 +135,8 @@ impl CPU {
         self.registers.f.half_carry = (self.registers.a & 0xF) < (b & 0xF);
         self.registers.f.carry = self.registers.a < b;
     }
+
+    pub(in crate::cpu) fn sbc(&mut self, b: u8) {
+        self.sub(b.wrapping_add(self.registers.f.carry as u8));
+    }
 }

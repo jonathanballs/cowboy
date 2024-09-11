@@ -143,7 +143,7 @@ impl PPU {
             0xFF40 => self.lcdc = value,
             0xFF41 => self.stat = value,
             0xFF42 => self.scy = value,
-            0xFF43 => self.scx = value,
+            0xFF43 => self.scx = dbg!(value),
             0xFF45 => self.lyc = value,
             0xFF47 => self.bgp = value,
             0xFF48 => self.obj_palette_0 = value,
@@ -177,6 +177,25 @@ impl PPU {
             0x9000_u16.wrapping_add(offset as u16)
         };
 
+        let mut ret = [[0u8; 8]; 8];
+
+        for i in 0..8 {
+            let byte_a = self.get_byte(start_address + (2 * i));
+            let byte_b = self.get_byte(start_address + (2 * i) + 1);
+
+            for j in 0..8 {
+                let bit1 = (byte_a >> 7 - j) & 1;
+                let bit2 = (byte_b >> 7 - j) & 1;
+
+                ret[j as usize][i as usize] = ((bit2 << 1) | bit1) as u8;
+            }
+        }
+
+        ret
+    }
+
+    pub fn get_object(&self, tile_index: u8) -> Tile {
+        let start_address = 0x8000 + ((tile_index as u16) * 16) as u16;
         let mut ret = [[0u8; 8]; 8];
 
         for i in 0..8 {
