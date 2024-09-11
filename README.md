@@ -47,3 +47,9 @@ well.
   (33c3)](https://www.youtube.com/watch?v=HyzD8pNlpwI&t=2540s) An excellent talk
   from the chaos computer club conference. This is very useful when you are
   getting started and want to get a feel for the system.
+- [Tetris disassembly](https://github.com/osnr/tetris). This tetris disassembly
+  has been commented. It was useful when my emulator got stuck because I could
+  quickly understand the intention of the code it was struggling with.
+- [Super mario land
+  disassembly](https://github.com/kaspermeerts/supermarioland/). Likewise this
+  SML disassembly was useful as it was the second game I approached after tetris.
