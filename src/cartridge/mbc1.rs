@@ -41,6 +41,7 @@ impl MBC for MBC1 {
 
     fn write_byte(&mut self, addr: u16, value: u8) {
         match addr {
+            0x0..=0x1FFF => (), // enable ram in theory
             0x2000..=0x3FFF => self.rom_bank = value & 0x1F,
             0xA000..=0xBFFF => self.ram[addr as usize - 0xA000] = value,
             _ => {

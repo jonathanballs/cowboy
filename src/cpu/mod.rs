@@ -78,8 +78,16 @@ impl CPU {
             Instruction::JrImm8(value) => self.jr(value),
 
             // Call and return
-            Instruction::CallCondImm16(cond, addr) => self.call_cond(mmu, cond, addr - length),
-            Instruction::CallImm16(addr) => self.call(mmu, addr - length),
+            Instruction::CallCondImm16(cond, addr) => {
+                if self.registers.f.evaluate_condition(cond) {
+                    self.push(mmu, self.registers.pc + length);
+                    self.registers.pc = addr - length;
+                }
+            }
+            Instruction::CallImm16(addr) => {
+                self.push(mmu, self.registers.pc + length);
+                self.registers.pc = addr - length;
+            }
             Instruction::RstTgt3(addr) => self.rst_tgt3(mmu, addr as u16),
             Instruction::Ret => self.ret(mmu),
             Instruction::RetCond(cond) => self.ret_cond(mmu, cond),
@@ -110,8 +118,8 @@ impl CPU {
             _ => {
                 println!(
                     "{}",
-                    "Sorry cowboy but it looks like that instruction just ain't handled
-                    \nyet - get back out to the ranch and fix that dang emulator!"
+                    "Sorry cowboy but it looks like that instruction just ain't handled \nyet - \
+                        get back out to the ranch and fix that dang emulator!"
                         .yellow()
                 );
                 todo!();
@@ -126,14 +134,22 @@ impl CPU {
 
         // Handle interrupts
         if self.ime && !just_set_ei {
-            if mmu.read_byte(0xFF0F) & 1 > 0 && mmu.ppu.vblank_irq {
-                // Call 0x40
+            // vblank
+            if mmu.ie & 1 > 0 && mmu.ppu.vblank_irq {
                 mmu.ppu.vblank_irq = false;
                 self.ime = false;
 
-                self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 3);
-                self.registers.sp -= 2;
+                self.push(mmu, self.registers.pc + 3);
                 self.registers.pc = 0x40;
+            }
+
+            // timer
+            if mmu.ie & 4 > 0 && mmu.timer.timer_irq {
+                mmu.timer.timer_irq = false;
+                self.ime = false;
+
+                self.push(mmu, self.registers.pc + 3);
+                self.registers.pc = 0x50;
             }
         }
 
