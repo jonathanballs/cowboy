@@ -31,6 +31,10 @@ impl GameBoy {
     }
 
     pub fn step(&mut self) {
+        if self.breakpoints.contains(&self.cpu.registers.pc) {
+            self.debugger_cli();
+        }
+
         let _cycles = self.cpu.step(&mut self.mmu);
     }
 

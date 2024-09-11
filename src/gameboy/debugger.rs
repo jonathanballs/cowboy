@@ -208,7 +208,7 @@ impl GameBoy {
         println!(
             "Joypad:    {:5}     {}",
             colored_bool(self.mmu.ie & 0x16 > 0),
-            colored_bool(self.mmu.read_byte(0xFF0F) & 0x16 > 0)
+            colored_bool(self.mmu.read_byte(0xFF0F) & 0x10 > 0)
         );
 
         println!("");
