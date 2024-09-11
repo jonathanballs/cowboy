@@ -1,6 +1,7 @@
 use minifb::Key;
 
 pub struct Joypad {
+    pub joypad_irq: bool,
     joypad: u8,
     ssba: u8,
     dulr: u8,
@@ -9,6 +10,7 @@ pub struct Joypad {
 impl Joypad {
     pub fn new() -> Joypad {
         Joypad {
+            joypad_irq: false,
             joypad: 0x0,
             dulr: 0xF,
             ssba: 0xF,
@@ -16,6 +18,8 @@ impl Joypad {
     }
 
     pub fn handle_key_down(&mut self, key: Key) {
+        let original_irq = self.joypad_irq;
+        self.joypad_irq = true;
         match key {
             Key::Right => self.dulr &= !0x1,
             Key::Left => self.dulr &= !0x2,
@@ -27,11 +31,14 @@ impl Joypad {
             Key::Space => self.ssba &= !0x4,
             Key::Enter => self.ssba &= !0x8,
 
-            _ => (),
+            _ => self.joypad_irq = original_irq,
         }
     }
 
     pub fn handle_key_up(&mut self, key: Key) {
+        let original_irq = self.joypad_irq;
+        self.joypad_irq = true;
+
         match key {
             Key::Right => self.dulr |= 0x1,
             Key::Left => self.dulr |= 0x2,
@@ -43,7 +50,7 @@ impl Joypad {
             Key::Space => self.ssba |= 0x4,
             Key::Enter => self.ssba |= 0x8,
 
-            _ => (),
+            _ => self.joypad_irq = original_irq,
         }
     }
 

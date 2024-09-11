@@ -42,6 +42,7 @@ impl CPU {
             Instruction::LdhCmemA => self.ldh_addr(mmu, self.registers.c, self.registers.a),
             Instruction::LdhImm8memA(offset) => self.ldh_addr(mmu, offset, self.registers.a),
             Instruction::LdhAImm8mem(addr) => self.lda(mmu.read_byte(0xFF00 + addr as u16)),
+            Instruction::LdhACmem => self.lda(mmu.read_byte(0xFF00 + self.registers.c as u16)),
 
             // Arithmetic
             Instruction::IncR8(reg) => self.inc(mmu, reg),
@@ -122,6 +123,9 @@ impl CPU {
                         get back out to the ranch and fix that dang emulator!"
                         .yellow()
                 );
+                dbg!(instruction);
+                dbg!(&self.registers);
+                dbg!(mmu.read_byte(self.registers.pc));
                 todo!();
             }
         };
@@ -134,12 +138,18 @@ impl CPU {
 
         // Handle interrupts
         if self.ime && !just_set_ei {
+            let return_pc = if matches!(instruction, Instruction::Halt) {
+                self.registers.pc + 1
+            } else {
+                self.registers.pc
+            };
+
             // vblank
             if mmu.ie & 1 > 0 && mmu.ppu.vblank_irq {
                 mmu.ppu.vblank_irq = false;
                 self.ime = false;
 
-                self.push(mmu, self.registers.pc + 3);
+                self.push(mmu, return_pc);
                 self.registers.pc = 0x40;
             }
 
@@ -148,8 +158,17 @@ impl CPU {
                 mmu.timer.timer_irq = false;
                 self.ime = false;
 
-                self.push(mmu, self.registers.pc + 3);
+                self.push(mmu, return_pc);
                 self.registers.pc = 0x50;
+            }
+
+            // joypad
+            if mmu.ie & 0x10 > 0 && mmu.joypad.joypad_irq {
+                mmu.joypad.joypad_irq = false;
+                self.ime = false;
+
+                self.push(mmu, return_pc);
+                self.registers.pc = 0x60;
             }
         }
 

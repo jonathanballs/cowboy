@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum R16mem {
     BC,
     DE,

@@ -73,7 +73,11 @@ impl MMU {
             0xFF50 => self.boot_rom_enabled as u8,
 
             // VBlank interrupt
-            0xFF0F => (self.ppu.vblank_irq as u8) | ((self.timer.timer_irq as u8) << 2),
+            0xFF0F => {
+                (self.ppu.vblank_irq as u8)
+                    | ((self.timer.timer_irq as u8) << 2)
+                    | ((self.joypad.joypad_irq as u8) << 4)
+            }
 
             // VOAM
             0xFE00..=0xFF7F => self.ppu.get_byte(addr),
