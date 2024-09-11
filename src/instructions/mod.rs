@@ -327,7 +327,7 @@ mod test {
     use super::parse;
 
     fn assert_instruction(opcode: u8, imm8: u8, json: &Value) {
-        let expected_bytes = json["bytes"].as_u64().unwrap() as u8;
+        let expected_bytes = json["bytes"].as_u64().unwrap() as u16;
         let expected_cycles = json["cycles"][0].as_u64().unwrap() as u8;
 
         // Call the parse function (you need to implement this)
@@ -561,7 +561,7 @@ mod test {
     fn jr_imm8() {
         assert!(matches!(
             get_instruction(0x18, 0xFF, 0x0),
-            Instruction::JrImm8(0xFF)
+            Instruction::JrImm8(-1)
         ))
     }
 
