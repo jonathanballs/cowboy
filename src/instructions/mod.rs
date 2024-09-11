@@ -11,14 +11,14 @@ use r16mem::R16mem;
 use r16stk::R16stk;
 use r8::R8;
 
-pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u8, u8) {
+pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u16, u8) {
     let imm16: u16 = (arg2 as u16) << 8 | arg1 as u16;
     let imm8: u8 = arg1;
 
     return match opcode {
         // Block 0
         0x00 => (Instruction::Nop, 1, 4),
-        0x01 => (Instruction::LdR16Imm16mem(R16::BC, imm16), 3, 12),
+        0x01 => (Instruction::LdR16Imm16(R16::BC, imm16), 3, 12),
         0x02 => (Instruction::LdR16memA(R16mem::BC), 1, 8),
         0x03 => (Instruction::IncR16(R16::BC), 1, 8),
         0x04 => (Instruction::IncR8(R8::B), 1, 4),
@@ -34,14 +34,14 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u8, u8) {
         0x0E => (Instruction::LdR8Imm8(R8::C, imm8), 2, 8),
         0x0F => (Instruction::Rrca, 1, 4),
         0x10 => (Instruction::Stop, 2, 4),
-        0x11 => (Instruction::LdR16Imm16mem(R16::DE, imm16), 3, 12),
+        0x11 => (Instruction::LdR16Imm16(R16::DE, imm16), 3, 12),
         0x12 => (Instruction::LdR16memA(R16mem::DE), 1, 8),
         0x13 => (Instruction::IncR16(R16::DE), 1, 8),
         0x14 => (Instruction::IncR8(R8::D), 1, 4),
         0x15 => (Instruction::IncR8(R8::D), 1, 4),
         0x16 => (Instruction::LdR8Imm8(R8::D, imm8), 2, 8),
         0x17 => (Instruction::Rla, 1, 4),
-        0x18 => (Instruction::JrImm8(imm8), 2, 12),
+        0x18 => (Instruction::JrImm8(imm8 as i8), 2, 12),
         0x19 => (Instruction::AddHlR16(R16::DE), 1, 8),
         0x1A => (Instruction::LdAR16mem(R16mem::DE), 1, 8),
         0x1B => (Instruction::DecR16(R16::DE), 1, 8),
@@ -49,15 +49,15 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u8, u8) {
         0x1D => (Instruction::DecR8(R8::E), 1, 4),
         0x1E => (Instruction::LdR8Imm8(R8::E, imm8), 2, 8),
         0x1F => (Instruction::Rra, 1, 4),
-        0x20 => (Instruction::JrCondImm8(Cond::NZ, imm8), 2, 12),
-        0x21 => (Instruction::LdR16Imm16mem(R16::HL, imm16), 3, 12),
+        0x20 => (Instruction::JrCondImm8(Cond::NZ, imm8 as i8), 2, 12),
+        0x21 => (Instruction::LdR16Imm16(R16::HL, imm16), 3, 12),
         0x22 => (Instruction::LdR16memA(R16mem::HLI), 1, 8),
         0x23 => (Instruction::IncR16(R16::HL), 1, 8),
         0x24 => (Instruction::IncR8(R8::H), 1, 4),
         0x25 => (Instruction::IncR8(R8::H), 1, 4),
         0x26 => (Instruction::LdR8Imm8(R8::H, imm8), 2, 8),
         0x27 => (Instruction::Daa, 1, 4),
-        0x28 => (Instruction::JrCondImm8(Cond::Z, imm8), 2, 12),
+        0x28 => (Instruction::JrCondImm8(Cond::Z, imm8 as i8), 2, 12),
         0x29 => (Instruction::AddHlR16(R16::HL), 1, 8),
         0x2A => (Instruction::LdAR16mem(R16mem::HLI), 1, 8),
         0x2B => (Instruction::DecR16(R16::HL), 1, 8),
@@ -65,15 +65,15 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u8, u8) {
         0x2D => (Instruction::DecR8(R8::L), 1, 4),
         0x2E => (Instruction::LdR8Imm8(R8::L, imm8), 2, 8),
         0x2F => (Instruction::Cpl, 1, 4),
-        0x30 => (Instruction::JrCondImm8(Cond::NC, imm8), 2, 12),
-        0x31 => (Instruction::LdR16Imm16mem(R16::SP, imm16), 3, 12),
+        0x30 => (Instruction::JrCondImm8(Cond::NC, imm8 as i8), 2, 12),
+        0x31 => (Instruction::LdR16Imm16(R16::SP, imm16), 3, 12),
         0x32 => (Instruction::LdR16memA(R16mem::HLD), 1, 8),
         0x33 => (Instruction::IncR16(R16::SP), 1, 8),
         0x34 => (Instruction::IncR8(R8::HL), 1, 12),
         0x35 => (Instruction::DecR8(R8::HL), 1, 12),
         0x36 => (Instruction::LdR8Imm8(R8::HL, imm8), 2, 12),
         0x37 => (Instruction::Scf, 1, 4),
-        0x38 => (Instruction::JrCondImm8(Cond::C, imm8), 2, 12),
+        0x38 => (Instruction::JrCondImm8(Cond::C, imm8 as i8), 2, 12),
         0x39 => (Instruction::AddHlR16(R16::SP), 1, 8),
         0x3A => (Instruction::LdAR16mem(R16mem::HLD), 1, 8),
         0x3B => (Instruction::DecR16(R16::SP), 1, 8),
@@ -181,7 +181,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u8, u8) {
     };
 }
 
-fn parse_prefixed(opcode: u8) -> (Instruction, u8, u8) {
+fn parse_prefixed(opcode: u8) -> (Instruction, u16, u8) {
     let operand = R8::from(opcode & 0x7);
 
     let instruction = {
@@ -236,8 +236,10 @@ pub enum Instruction {
     LdHlSpImm8(u8),
     LdImm16memA(u16),
     LdImm16memSp(u16),
-    LdR16Imm16mem(R16, u16),
+
+    LdR16Imm16(R16, u16),
     LdR16memA(R16mem),
+
     LdR8Imm8(R8, u8),
     LdR8R8(R8, R8),
     LdSpHl,
@@ -294,8 +296,8 @@ pub enum Instruction {
     JpCondImm16(Cond, u16),
     JpHl,
     JpImm16(u16),
-    JrCondImm8(Cond, u8),
-    JrImm8(u8),
+    JrCondImm8(Cond, i8),
+    JrImm8(i8),
     PopR16stk(R16stk),
     PushR16stk(R16stk),
     Ret,
@@ -410,12 +412,12 @@ mod test {
     fn ld_r16_imm16() {
         assert!(matches!(
             get_instruction(0x01, 0xC6, 0x5),
-            Instruction::LdR16Imm16mem(R16::BC, 0x05C6)
+            Instruction::LdR16Imm16(R16::BC, 0x05C6)
         ));
 
         assert!(matches!(
             get_instruction(0x31, 0x0, 0x0),
-            Instruction::LdR16Imm16mem(R16::SP, 0x0)
+            Instruction::LdR16Imm16(R16::SP, 0x0)
         ))
     }
 

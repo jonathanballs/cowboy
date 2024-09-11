@@ -23,7 +23,7 @@ use renderer::window_loop;
 fn main() {
     let (tx, rx) = mpsc::channel::<PPU>();
     let (tx_key, rx_key) = mpsc::channel::<(bool, Key)>();
-    let rom = read_file_to_bytes("roms/super-mario-land.gb").unwrap();
+    let rom = read_file_to_bytes("roms/tetris.gb").unwrap();
     let game_title = CartridgeHeader::new(&rom).unwrap().title();
 
     let _ = thread::spawn(move || emulator_loop(rom, tx, rx_key));

@@ -1,13 +1,16 @@
 use crate::{
+    cpu::CPU,
     instructions::{r16::R16, r8::R8},
     mmu::MMU,
 };
 
-use super::CPU;
-
 impl CPU {
-    // bitwise operations
-    pub(super) fn and(&mut self, b: u8) {
+    /*
+     *
+     * Bitwise Operations
+     *
+     */
+    pub(in crate::cpu) fn and(&mut self, b: u8) {
         let result = b & self.registers.a;
         self.registers.a = result;
 
@@ -17,7 +20,7 @@ impl CPU {
         self.registers.f.carry = false;
     }
 
-    pub(super) fn or(&mut self, b: u8) {
+    pub(in crate::cpu) fn or(&mut self, b: u8) {
         let result = b | self.registers.a;
         self.registers.a = result;
 
@@ -27,7 +30,7 @@ impl CPU {
         self.registers.f.subtract = false;
     }
 
-    pub(super) fn xor(&mut self, b: u8) {
+    pub(in crate::cpu) fn xor(&mut self, b: u8) {
         let result = b ^ self.registers.a;
         self.registers.a = result;
 
@@ -37,20 +40,24 @@ impl CPU {
         self.registers.f.subtract = false;
     }
 
-    // increment/decrement
-    pub(super) fn inc_r16(&mut self, a: R16) {
+    /*
+     *
+     * Increment & Decrement
+     *
+     */
+    pub(in crate::cpu) fn inc_r16(&mut self, a: R16) {
         let value = self.registers.get_r16(a);
         let result = value.wrapping_add(1);
         self.registers.set_r16(a, result);
     }
 
-    pub(super) fn dec_r16(&mut self, a: R16) {
+    pub(in crate::cpu) fn dec_r16(&mut self, a: R16) {
         let value = self.registers.get_r16(a);
         let result = value.wrapping_sub(1);
         self.registers.set_r16(a, result);
     }
 
-    pub(super) fn inc(&mut self, memory: &mut MMU, a: R8) {
+    pub(in crate::cpu) fn inc(&mut self, memory: &mut MMU, a: R8) {
         let value = self.get_r8_byte(memory, a);
         let result = value.wrapping_add(1);
         self.set_r8_byte(memory, a, result);
@@ -61,7 +68,7 @@ impl CPU {
         self.registers.f.half_carry = (value & 0xF) == 0xF;
     }
 
-    pub(super) fn dec(&mut self, mmu: &mut MMU, a: R8) {
+    pub(in crate::cpu) fn dec(&mut self, mmu: &mut MMU, a: R8) {
         let value = self.get_r8_byte(mmu, a);
         let result = value.wrapping_sub(1);
         self.set_r8_byte(mmu, a, result);
@@ -72,8 +79,12 @@ impl CPU {
         self.registers.f.half_carry = (value & 0xF) == 0x0;
     }
 
-    // maths
-    pub(super) fn add(&mut self, b: u8) {
+    /*
+     *
+     * Mathematic Operations
+     *
+     */
+    pub(in crate::cpu) fn add(&mut self, b: u8) {
         let result = self.registers.a.wrapping_add(b);
 
         self.registers.f.zero = result == 0;
@@ -86,7 +97,7 @@ impl CPU {
         self.registers.a = result;
     }
 
-    pub(super) fn add_r16(&mut self, a_reg: R16, b: u16) {
+    pub(in crate::cpu) fn add_r16(&mut self, a_reg: R16, b: u16) {
         let a = self.registers.get_r16(a_reg);
         let result = a.wrapping_add(b);
 
@@ -96,13 +107,27 @@ impl CPU {
         self.registers.set_r16(a_reg, result);
     }
 
-    pub(super) fn sub(&mut self, b: u8) {
+    pub(in crate::cpu) fn adc(&mut self, value: u8) {
+        let result = self
+            .registers
+            .a
+            .wrapping_add(value)
+            .wrapping_add(self.registers.f.carry as u8);
+        self.registers.a = result;
+
+        self.registers.f.zero = result == 0;
+        self.registers.f.carry = value > self.registers.a;
+        self.registers.f.half_carry = (value & 0x0F) == 0x0F; // Hmmmm...
+        self.registers.f.subtract = false;
+    }
+
+    pub(in crate::cpu) fn sub(&mut self, b: u8) {
         // Use flag setting from CP
         self.cp(b);
         self.registers.a = self.registers.a.wrapping_sub(b);
     }
 
-    pub(super) fn cp(&mut self, b: u8) {
+    pub(in crate::cpu) fn cp(&mut self, b: u8) {
         let result = self.registers.a.wrapping_sub(b);
 
         self.registers.f.zero = result == 0;
