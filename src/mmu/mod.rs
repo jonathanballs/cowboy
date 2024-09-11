@@ -3,8 +3,9 @@ pub mod joypad;
 pub mod ppu;
 pub mod timer;
 
-use crate::cartridge::Cartridge;
+use crate::{cartridge::Cartridge, debugger::enable_debug};
 use bootrom::BOOT_ROM;
+use colored::Colorize;
 use joypad::Joypad;
 use ppu::PPU;
 use timer::Timer;
@@ -58,8 +59,9 @@ impl MMU {
 
             // Echo RAM
             0xE000..=0xFDFF => {
-                println!("tried to read echo ram");
-                unreachable!()
+                println!("{}", "Tried to read ECHO ram".red());
+                enable_debug();
+                0x0
             }
 
             // Joypad

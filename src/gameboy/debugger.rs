@@ -1,7 +1,10 @@
 use core::fmt;
 use std::io::{self, Write};
 
-use crate::instructions::parse;
+use crate::{
+    debugger::{disable_debug, enable_debug},
+    instructions::parse,
+};
 
 use super::GameBoy;
 use colored::*;
@@ -34,12 +37,12 @@ impl GameBoy {
 
             match command.as_str() {
                 "" | "s" | "step" => {
-                    self.debugger_enabled = true;
+                    enable_debug();
                     return;
                 }
 
                 "c" | "continue" => {
-                    self.debugger_enabled = false;
+                    disable_debug();
                     return;
                 }
 
@@ -62,6 +65,8 @@ impl GameBoy {
                 "h" | "help" => self.print_help(),
 
                 "i" | "interrupts" => self.print_interrupts(),
+
+                "ins" | "instructions" => self.print_instructions(),
 
                 "p" | "print" => self.print_memory_range(args),
 
@@ -173,6 +178,12 @@ impl GameBoy {
         println!();
     }
 
+    fn print_instructions(&self) {
+        for (addr, instruction) in self.instruction_history.iter() {
+            println!("{:#06X} {}", addr, instruction)
+        }
+    }
+
     fn print_interrupts(&self) {
         fn colored_bool(b: bool) -> String {
             if b {
@@ -227,6 +238,7 @@ impl GameBoy {
         println!("[i]nterrupts              show interupt flags");
         println!("[h]elp                    show this help info");
         println!("[ro]m                     display gameboy rom");
+        println!("[ins]tructions            last cpu operations");
         println!("=============================================");
         println!("");
     }

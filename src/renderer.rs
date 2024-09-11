@@ -98,7 +98,7 @@ pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &Stri
                 render_tile(
                     &mut buffer,
                     ppu.get_tile(tile_index),
-                    (ppu.scx as usize).wrapping_add(i as usize * 8) % 256,
+                    (i as usize * 8).wrapping_sub(ppu.scx as usize) % 256,
                     ((i as usize / 32) * 8).wrapping_sub(ppu.scy as usize),
                     0x0,
                     false,

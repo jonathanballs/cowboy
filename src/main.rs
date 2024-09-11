@@ -1,5 +1,6 @@
 pub mod cartridge;
 pub mod cpu;
+pub mod debugger;
 pub mod gameboy;
 pub mod instructions;
 pub mod mmu;
@@ -7,18 +8,21 @@ mod renderer;
 
 use cartridge::header::CartridgeHeader;
 use colored::*;
+use debugger::{enable_debug, is_debug_enabled};
 use std::fs::File;
 use std::io::Read;
 use std::process::exit;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
+use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{mpsc, Arc};
 use std::thread;
 
 use gameboy::GameBoy;
 use minifb::Key;
 use mmu::ppu::PPU;
 use renderer::window_loop;
+
+pub static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     let (tx, rx) = mpsc::channel::<PPU>();
@@ -33,17 +37,14 @@ fn main() {
 fn emulator_loop(rom: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) {
     let mut gameboy = GameBoy::new(rom);
 
-    let paused = Arc::new(AtomicBool::new(false));
-    let p = paused.clone();
-
     ctrlc::set_handler(move || {
-        if p.load(Ordering::SeqCst) {
+        if is_debug_enabled() {
             // If already paused, stop the emulator
             println!("{}", "\nSo long space cowboy".red());
             exit(-1);
         } else {
             // If running, pause the emulator
-            p.store(true, Ordering::SeqCst);
+            enable_debug();
             println!("Received Ctrl+C! Pausing at the end of this step...");
         }
     })
@@ -51,12 +52,7 @@ fn emulator_loop(rom: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) {
 
     loop {
         // Enter debug mode if Ctrl-C received
-        if paused.load(Ordering::SeqCst) {
-            gameboy.debugger_enabled = true;
-        }
-        paused.store(false, Ordering::SeqCst);
-
-        if gameboy.debugger_enabled {
+        if is_debug_enabled() {
             gameboy.debugger_cli()
         }
 

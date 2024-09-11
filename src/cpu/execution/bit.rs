@@ -66,9 +66,10 @@ impl CPU {
 
     pub(in crate::cpu) fn sla(&mut self, mmu: &mut MMU, reg: R8) {
         let value = self.get_r8_byte(mmu, R8::A);
-        let new_value = (value << 1) | self.registers.f.carry as u8;
+        let new_value = value << 1;
         self.set_r8_byte(mmu, reg, new_value);
-        self.registers.f.carry = value >> 7 == 1;
+
+        self.registers.f.carry = value & 0x80 == 0x80;
         self.registers.f.half_carry = false;
         self.registers.f.subtract = false;
         self.registers.f.zero = new_value == 0;
@@ -99,6 +100,17 @@ impl CPU {
         self.registers.f.subtract = false;
         self.registers.f.half_carry = false;
         self.registers.f.carry = true;
+    }
+
+    pub(in crate::cpu) fn rr(&mut self, mmu: &mut MMU, r: R8) {
+        let old_carry = self.registers.f.carry;
+        let old_value = self.get_r8_byte(mmu, r);
+        let result = (old_value >> 1) | ((old_carry as u8) << 7);
+        self.registers.f.carry = old_value & 0x1 == 0x1;
+        self.registers.f.zero = result == 0;
+        self.registers.f.subtract = false;
+        self.registers.f.half_carry = false;
+        self.set_r8_byte(mmu, r, result);
     }
 
     pub(in crate::cpu) fn daa(&mut self) {

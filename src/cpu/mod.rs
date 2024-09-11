@@ -2,6 +2,7 @@ use colored::*;
 use registers::Registers;
 
 use crate::{
+    debugger::enable_debug,
     instructions::{parse, r16::R16, r8::R8, Instruction},
     mmu::MMU,
 };
@@ -83,6 +84,7 @@ impl CPU {
             Instruction::Daa => self.daa(),
             Instruction::SwapR8(reg) => self.swap(mmu, reg),
             Instruction::Scf => self.scf(),
+            Instruction::RrR8(r) => self.rr(mmu, r),
 
             // Jump instructions
             Instruction::JpImm16(addr) => self.jp(addr.wrapping_sub(length)),
@@ -127,10 +129,8 @@ impl CPU {
                         get back out to the ranch and fix that dang emulator!"
                         .yellow()
                 );
-                dbg!(instruction);
-                dbg!(&self.registers);
-                dbg!(mmu.read_byte(self.registers.pc));
-                todo!();
+                enable_debug();
+                dbg!(self.registers.pc);
             }
         };
 
