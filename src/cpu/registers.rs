@@ -1,6 +1,9 @@
 use std::fmt;
 
-use crate::instructions::{r16::R16, r16mem::R16mem, r16stk::R16stk, r8::R8};
+use crate::{
+    debugger::is_gameboy_doctor,
+    instructions::{r16::R16, r16mem::R16mem, r16stk::R16stk, r8::R8},
+};
 
 use super::flag_register::FlagsRegister;
 
@@ -19,17 +22,32 @@ pub struct Registers {
 
 impl Registers {
     pub fn new() -> Registers {
-        Registers {
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-            e: 0,
-            f: FlagsRegister::from(0),
-            h: 0,
-            l: 0,
-            sp: 0,
-            pc: 0,
+        if is_gameboy_doctor() {
+            Registers {
+                a: 0x1,
+                f: FlagsRegister::from(0xB0),
+                b: 0,
+                c: 0x13,
+                d: 0,
+                e: 0xD8,
+                h: 0x01,
+                l: 0x4D,
+                sp: 0xFFFE,
+                pc: 0x100,
+            }
+        } else {
+            Registers {
+                a: 0,
+                b: 0,
+                c: 0,
+                d: 0,
+                e: 0,
+                f: FlagsRegister::from(0),
+                h: 0,
+                l: 0,
+                sp: 0,
+                pc: 0,
+            }
         }
     }
 

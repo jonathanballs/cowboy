@@ -3,13 +3,14 @@ mod debugger;
 use std::collections::HashSet;
 
 use crate::cpu::CPU;
+use crate::debugger::is_gameboy_doctor;
 use crate::instructions::{parse, Instruction};
 use crate::mmu::MMU;
 use std::collections::VecDeque;
 
 pub struct GameBoy {
     // debugger
-    breakpoints: HashSet<u16>,
+    pub breakpoints: HashSet<u16>,
     memory_breakpoints: HashSet<u16>,
     instruction_history: VecDeque<(u16, Instruction)>,
 
@@ -31,6 +32,10 @@ impl GameBoy {
     }
 
     pub fn step(&mut self) {
+        if is_gameboy_doctor() {
+            self.print_gameboy_doctor();
+        }
+
         if self.breakpoints.contains(&self.cpu.registers.pc) {
             self.debugger_cli();
         }
@@ -52,5 +57,26 @@ impl GameBoy {
         match parse(opcode, arg_1, arg_2) {
             (ins, _, _) => ins,
         }
+    }
+
+    fn print_gameboy_doctor(&self) {
+        println!(
+            "A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} \
+                PCMEM:{:02X},{:02X},{:02X},{:02X}",
+            self.cpu.registers.a,
+            u8::from(self.cpu.registers.f),
+            self.cpu.registers.b,
+            self.cpu.registers.c,
+            self.cpu.registers.d,
+            self.cpu.registers.e,
+            self.cpu.registers.h,
+            self.cpu.registers.l,
+            self.cpu.registers.sp,
+            self.cpu.registers.pc,
+            self.mmu.read_byte(self.cpu.registers.pc),
+            self.mmu.read_byte(self.cpu.registers.pc + 1),
+            self.mmu.read_byte(self.cpu.registers.pc + 2),
+            self.mmu.read_byte(self.cpu.registers.pc + 3),
+        );
     }
 }
