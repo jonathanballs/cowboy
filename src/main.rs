@@ -7,8 +7,9 @@ pub mod mmu;
 mod renderer;
 
 use cartridge::header::CartridgeHeader;
+use clap::Parser;
 use colored::*;
-use debugger::{enable_debug, is_debug_enabled};
+use debugger::{enable_debug, enable_gameboy_doctor, is_debug_enabled};
 use std::fs::File;
 use std::io::Read;
 use std::process::exit;
@@ -24,10 +25,32 @@ use renderer::window_loop;
 
 pub static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
 
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Whether to enable the doctor or not.
+    #[arg(short, long, default_value_t = false)]
+    doctor: bool,
+
+    rom_path: Option<String>,
+}
+
 fn main() {
+    let args = Args::parse();
+
+    let rom_path = match args.rom_path {
+        Some(path) => path,
+        _ => "roms/super-mario-land.gb".to_string(),
+    };
+
+    if args.doctor {
+        enable_gameboy_doctor();
+    }
+
     let (tx, rx) = mpsc::channel::<PPU>();
     let (tx_key, rx_key) = mpsc::channel::<(bool, Key)>();
-    let rom = read_file_to_bytes("roms/super-mario-land.gb").unwrap();
+    let rom = read_file_to_bytes(rom_path.as_str()).unwrap();
     let game_title = CartridgeHeader::new(&rom).unwrap().title();
 
     let _ = thread::spawn(move || emulator_loop(rom, tx, rx_key));
@@ -45,7 +68,7 @@ fn emulator_loop(rom: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) {
         } else {
             // If running, pause the emulator
             enable_debug();
-            println!("Received Ctrl+C! Pausing at the end of this step...");
+            println!("{}", "Received Ctrl+C! Entering debugger.".red());
         }
     })
     .expect("Error setting Ctrl-C handler");
