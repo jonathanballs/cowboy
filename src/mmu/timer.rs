@@ -7,21 +7,22 @@ pub struct Timer {
     div: u8,
     tima: u8,
     tma: u8,
-    tac: u8,
+    step: u32,
 }
 
 impl Timer {
     pub fn new() -> Timer {
         Timer {
-            enabled: true,
-
             timer_irq: false,
             div: 0,
             cycles_since_div: 0,
             cycles_since_tima: 0,
             tima: 0,
             tma: 0,
-            tac: 0,
+
+            // tca
+            step: 256,
+            enabled: false,
         }
     }
 
@@ -35,13 +36,14 @@ impl Timer {
         if self.enabled {
             self.cycles_since_tima += n as u32;
 
-            while self.cycles_since_tima >= 256 {
+            while self.cycles_since_tima >= self.step {
                 self.tima = self.tima.wrapping_add(1);
                 if self.tima == 0 {
                     self.tima = self.tma;
                     self.timer_irq = true
                 }
-                self.cycles_since_tima -= 256;
+
+                self.cycles_since_tima -= self.step;
             }
         }
     }
@@ -51,7 +53,16 @@ impl Timer {
             0xFF04 => self.div,
             0xFF05 => self.tima,
             0xFF06 => self.tma,
-            0xFF07 => self.tac,
+            0xFF07 => {
+                0xF8 | (if self.enabled { 0x4 } else { 0 })
+                    | (match self.step {
+                        16 => 1,
+                        64 => 2,
+                        256 => 3,
+                        _ => 0,
+                    })
+            }
+
             _ => unreachable!(),
         }
     }
@@ -64,7 +75,16 @@ impl Timer {
             // Interrupt registers
             0xFF05 => self.tima = value,
             0xFF06 => self.tma = value,
-            0xFF07 => self.tac = value,
+            0xFF07 => {
+                self.enabled = value & 0x4 != 0;
+                self.step = match value & 0x3 {
+                    1 => 16,
+                    2 => 64,
+                    3 => 256,
+                    _ => 1024,
+                };
+            }
+
             _ => unreachable!(),
         }
     }

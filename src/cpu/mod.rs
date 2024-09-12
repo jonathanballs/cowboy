@@ -151,7 +151,7 @@ impl CPU {
         mmu.timer.do_cycles(cycles);
 
         // Handle interrupts
-        if self.ime && !just_set_ei {
+        if (self.ime && !just_set_ei) || matches!(instruction, Instruction::Halt) {
             let return_pc = if matches!(instruction, Instruction::Halt) {
                 self.registers.pc + 1
             } else {
