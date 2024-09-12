@@ -143,13 +143,15 @@ impl PPU {
             0xFF4A => self.wy,
             0xFF4B => self.wx,
 
+            0xFF4D => 0,
+
             0xFF48 => self.obj_palette_0,
             0xFF49 => self.obj_palette_1,
 
             0xFe00..=0xFE9F => self.voam[(addr - 0xFE00) as usize],
 
             _ => {
-                dbg!(addr);
+                println!("tried to read {:#04x}", addr);
                 todo!()
             }
         }
@@ -174,13 +176,14 @@ impl PPU {
 
             0xFF4A => self.wy = value,
             0xFF4B => self.wx = value,
+            0xFF4D => (),
 
             0xFe00..=0xFE9F => self.voam[(addr - 0xFE00) as usize] = value,
 
             0xFF7F => (),
 
             _ => {
-                println!("PPU does not support address {:x?}", addr);
+                println!("tried to write {:#04x}", addr);
                 todo!()
             }
         }
