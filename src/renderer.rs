@@ -3,8 +3,8 @@ use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 use crate::mmu::ppu::{Tile, PPU};
 
-const WIDTH: usize = 160;
-const HEIGHT: usize = 144;
+const SCREEN_WIDTH: usize = 160;
+const SCREEN_HEIGHT: usize = 144;
 
 fn palette(id: u8) -> u32 {
     match id {
@@ -19,8 +19,8 @@ fn palette(id: u8) -> u32 {
 fn render_tile(
     buffer: &mut Vec<u32>,
     tile: Tile,
-    x: usize,
-    y: usize,
+    screen_x: u8,
+    screen_y: u8,
     flags: u8,
     transparency: bool,
 ) {
@@ -29,23 +29,29 @@ fn render_tile(
 
     for tile_y in 0..8 {
         for tile_x in 0..8 {
-            let x_offset = if x_flip { (x + 8) - tile_x } else { x + tile_x };
-
-            let y_offset = if y_flip {
-                y.wrapping_add(8).wrapping_sub(tile_y).wrapping_mul(WIDTH)
+            let x_offset: usize = if x_flip {
+                screen_x.wrapping_add(8).wrapping_sub(tile_x) as usize
             } else {
-                y.wrapping_add(tile_y).wrapping_mul(WIDTH)
+                screen_x.wrapping_add(tile_x) as usize
             };
 
-            if x_offset >= WIDTH || y.wrapping_add(tile_y) >= HEIGHT {
+            let y_offset: usize = if y_flip {
+                let o = screen_y.wrapping_add(8).wrapping_sub(tile_y) as usize;
+                o * SCREEN_WIDTH
+            } else {
+                let o = screen_y.wrapping_add(tile_y) as usize;
+                o * SCREEN_WIDTH
+            };
+
+            if x_offset >= SCREEN_WIDTH || y_offset > (SCREEN_HEIGHT - 1) * SCREEN_WIDTH {
                 continue;
             }
 
-            if transparency && tile[tile_x][tile_y] == 0 {
+            if transparency && tile[tile_x as usize][tile_y as usize] == 0 {
                 continue;
             }
 
-            buffer[y_offset + x_offset] = palette(tile[tile_x][tile_y]);
+            buffer[y_offset + x_offset] = palette(tile[tile_x as usize][tile_y as usize]);
         }
     }
 }
@@ -72,12 +78,12 @@ fn latest_ppu(rx: &Receiver<PPU>) -> Option<PPU> {
 }
 
 pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &String) {
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+    let mut buffer: Vec<u32> = vec![0; SCREEN_WIDTH as usize * SCREEN_HEIGHT as usize];
 
     let mut window = Window::new(
         format!("Cowboy Emulator - {}", game_title).as_str(),
-        WIDTH,
-        HEIGHT,
+        SCREEN_WIDTH as usize,
+        SCREEN_HEIGHT as usize,
         WindowOptions {
             scale: Scale::X4,
             ..WindowOptions::default()
@@ -88,23 +94,31 @@ pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &Stri
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // We unwrap here as we want this code to exit if it fails. Real applications may want to
         // handle this in a different way
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
+        window
+            .update_with_buffer(&buffer, SCREEN_WIDTH as usize, SCREEN_HEIGHT as usize)
+            .unwrap();
 
         // Receive frame buffer from the emulator
         if let Some(ppu) = latest_ppu(&rx) {
+            // Draw tiles
             for i in 0..1024 {
                 let tile_index = ppu.get_byte(0x9800 + i);
+
+                // Calculate location on the background map
+                let tile_x = ((i % 32) * 8) as u8;
+                let tile_y = ((i / 32) * 8) as u8;
 
                 render_tile(
                     &mut buffer,
                     ppu.get_tile(tile_index),
-                    (i as usize * 8).wrapping_sub(ppu.scx as usize) % 256,
-                    ((i as usize / 32) * 8).wrapping_sub(ppu.scy as usize),
+                    tile_x.wrapping_sub(ppu.scx), // ensure wrapping
+                    tile_y.wrapping_sub(ppu.scy),
                     0x0,
                     false,
                 )
             }
 
+            // Draw objects
             for i in 0..40 {
                 let start_position = 0xFE00 + i * 4;
 
@@ -117,8 +131,8 @@ pub fn window_loop(rx: Receiver<PPU>, tx: Sender<(bool, Key)>, game_title: &Stri
                 render_tile(
                     &mut buffer,
                     ppu.get_object(tile_index),
-                    x_position.wrapping_sub(8) as usize,
-                    y_position.wrapping_sub(16) as usize,
+                    x_position.wrapping_sub(8),
+                    y_position.wrapping_sub(16),
                     flags,
                     true,
                 );
