@@ -49,8 +49,8 @@ impl CPU {
 
     pub(in crate::cpu) fn rst_tgt3(&mut self, mmu: &mut MMU, addr: u16) {
         self.set_memory_word(mmu, self.registers.sp - 2, self.registers.pc + 1);
-        self.registers.sp -= 2;
-        self.registers.pc = addr - 1
+        self.registers.sp = self.registers.sp.wrapping_sub(2);
+        self.registers.pc = addr.wrapping_sub(1);
     }
 
     pub(in crate::cpu) fn ret(&mut self, mmu: &mut MMU) {

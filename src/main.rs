@@ -59,6 +59,8 @@ fn main() {
 
 fn emulator_loop(rom: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) {
     let mut gameboy = GameBoy::new(rom);
+    //gameboy.breakpoints.insert(0xC64E);
+    //gameboy.breakpoints.insert(0xC642);
 
     ctrlc::set_handler(move || {
         if is_debug_enabled() {

@@ -144,7 +144,7 @@ impl CPU {
             }
         };
 
-        self.registers.pc += length;
+        self.registers.pc = self.registers.pc.wrapping_add(length);
         mmu.ppu.do_cycle(cycles as u32 / 4);
 
         // Increase DIV register
