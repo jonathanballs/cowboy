@@ -124,7 +124,12 @@ impl GameBoy {
 
         let (_, instruction_length, _) = parse(opcode, arg_1, arg_2);
         let instruction_bytes = (0..instruction_length)
-            .map(|o| format!("{:x}", self.mmu.read_byte(self.cpu.registers.pc + o as u16)))
+            .map(|o| {
+                format!(
+                    "{:02x}",
+                    self.mmu.read_byte(self.cpu.registers.pc + o as u16)
+                )
+            })
             .collect::<Vec<String>>()
             .join("");
 
