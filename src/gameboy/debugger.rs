@@ -72,16 +72,22 @@ impl GameBoy {
 
                 "b" | "break" => {
                     if args.len() != 1 {
+                        println!("{:?}", self.breakpoints);
                         println!("{}", "ERR: Please provide two numerical arguments".red());
                         continue;
                     }
 
                     match parse_number(args[0]) {
                         Some(breakpoint) => {
-                            self.breakpoints.insert(breakpoint);
+                            if self.breakpoints.contains(&breakpoint) {
+                                println!("{}", "Removing breakpoint".green());
+                                self.breakpoints.remove(&breakpoint);
+                            } else {
+                                self.breakpoints.insert(breakpoint);
+                            }
                         }
                         _ => {
-                            println!("{}", "ERR: Invalid invalid numbers passed to mem".red());
+                            println!("{}", "ERR: Invalid invalid numbers passed to break".red());
                         }
                     }
                 }
