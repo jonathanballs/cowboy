@@ -77,12 +77,12 @@ impl CPU {
      */
     pub(in crate::cpu) fn push(&mut self, mmu: &mut MMU, value: u16) {
         self.set_memory_word(mmu, self.registers.sp - 2, value);
-        self.registers.sp -= 2;
+        self.registers.sp = self.registers.sp.wrapping_sub(2);
     }
 
     pub(in crate::cpu) fn pop(&mut self, mmu: &mut MMU, reg: R16stk) {
         let value = self.get_memory_word(mmu, self.registers.sp);
         self.registers.set_r16_stk(reg, value);
-        self.registers.sp += 2;
+        self.registers.sp = self.registers.sp.wrapping_add(2);
     }
 }

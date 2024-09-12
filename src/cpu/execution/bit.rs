@@ -54,6 +54,21 @@ impl CPU {
         self.registers.f.zero = false;
     }
 
+    pub(in crate::cpu) fn rlc(&mut self, mmu: &mut MMU, r: R8) {
+        let value = self.get_r8_byte(mmu, r);
+        let result = (value << 1) | (value >> 7);
+        self.set_r8_byte(mmu, r, result);
+        self.registers.f.zero = result == 0;
+        self.registers.f.subtract = false;
+        self.registers.f.half_carry = false;
+        self.registers.f.carry = value >> 7 == 1;
+    }
+
+    pub(in crate::cpu) fn rlca(&mut self, mmu: &mut MMU) {
+        self.rlc(mmu, R8::A);
+        self.registers.f.zero = false;
+    }
+
     pub(in crate::cpu) fn srl(&mut self, mmu: &mut MMU, reg: R8) {
         let value = self.get_r8_byte(mmu, reg);
         let result = value >> 1;
@@ -75,13 +90,15 @@ impl CPU {
         self.registers.f.zero = new_value == 0;
     }
 
-    pub(in crate::cpu) fn rlca(&mut self) {
-        let value = self.registers.a;
-        self.registers.f.carry = value & 0x80 == 0x80;
-        self.registers.f.zero = false;
+    pub(in crate::cpu) fn sra(&mut self, mmu: &mut MMU, reg: R8) {
+        let value = self.get_r8_byte(mmu, reg);
+        let result = value >> 1;
+        self.set_r8_byte(mmu, reg, result);
+
+        self.registers.f.carry = value & 0x1 == 0x1;
         self.registers.f.half_carry = false;
         self.registers.f.subtract = false;
-        self.registers.a = (value << 1) | (value >> 7);
+        self.registers.f.zero = result == 0;
     }
 
     pub(in crate::cpu) fn cpl(&mut self) {

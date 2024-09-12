@@ -46,6 +46,7 @@ impl CPU {
             Instruction::LdhACmem => self.lda(mmu.read_byte(0xFF00 + self.registers.c as u16)),
             Instruction::LdHlSpImm8(n) => self.ld_hl_sp(n),
             Instruction::LdSpHl => self.ld_r16(R16::SP, self.registers.get_r16(R16::HL)),
+            Instruction::LdImm16memSp(n) => self.set_memory_word(mmu, self.registers.sp, n),
 
             // Arithmetic
             Instruction::IncR8(reg) => self.inc(mmu, reg),
@@ -81,8 +82,10 @@ impl CPU {
             Instruction::Rla => self.rla(mmu),
             Instruction::SrlR8(reg) => self.srl(mmu, reg),
             Instruction::SlaR8(reg) => self.sla(mmu, reg),
+            Instruction::SraR8(reg) => self.sra(mmu, reg),
             Instruction::Cpl => self.cpl(),
-            Instruction::Rlca => self.rlca(),
+            Instruction::RlcR8(r) => self.rlc(mmu, r),
+            Instruction::Rlca => self.rlca(mmu),
             Instruction::Daa => self.daa(),
             Instruction::SwapR8(reg) => self.swap(mmu, reg),
             Instruction::Scf => self.scf(),
@@ -216,11 +219,11 @@ impl CPU {
         }
     }
 
-    pub fn set_memory_word(&mut self, memory: &mut MMU, addr: u16, word: u16) {
+    pub fn set_memory_word(&mut self, mmu: &mut MMU, addr: u16, word: u16) {
         let little = (word & 0xFF) as u8;
         let big = (word >> 8) as u8;
-        memory.write_byte(addr, little);
-        memory.write_byte(addr + 1, big)
+        mmu.write_byte(addr, little);
+        mmu.write_byte(addr + 1, big)
     }
 
     pub fn get_memory_word(&mut self, memory: &MMU, addr: u16) -> u16 {
