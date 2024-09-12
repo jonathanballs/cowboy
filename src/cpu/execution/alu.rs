@@ -107,6 +107,19 @@ impl CPU {
         self.registers.set_r16(a_reg, result);
     }
 
+    pub fn add_sp_e8(&mut self, e8: i8) {
+        let e8_u16 = e8 as i16 as u16; // Convert i8 to u16, preserving sign
+        let old_sp = self.registers.sp;
+
+        // Perform the addition
+        self.registers.sp = self.registers.sp.wrapping_add(e8_u16);
+
+        self.registers.f.zero = false;
+        self.registers.f.subtract = false;
+        self.registers.f.half_carry = (old_sp & 0xF) + (e8_u16 & 0xF) > 0xF;
+        self.registers.f.carry = (old_sp & 0xFF) + (e8_u16 & 0xFF) > 0xFF;
+    }
+
     pub(in crate::cpu) fn adc(&mut self, value: u8) {
         let a = self.registers.a;
         let c = self.registers.f.carry as u8;

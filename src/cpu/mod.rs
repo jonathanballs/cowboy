@@ -46,7 +46,7 @@ impl CPU {
             Instruction::LdhACmem => self.lda(mmu.read_byte(0xFF00 + self.registers.c as u16)),
             Instruction::LdHlSpImm8(n) => self.ld_hl_sp(n),
             Instruction::LdSpHl => self.ld_r16(R16::SP, self.registers.get_r16(R16::HL)),
-            Instruction::LdImm16memSp(n) => self.set_memory_word(mmu, self.registers.sp, n),
+            Instruction::LdImm16memSp(n) => self.set_memory_word(mmu, n, self.registers.sp),
 
             // Arithmetic
             Instruction::IncR8(reg) => self.inc(mmu, reg),
@@ -57,6 +57,7 @@ impl CPU {
             Instruction::AdcAR8(reg) => self.adc(self.get_r8_byte(mmu, reg)),
             Instruction::AddAImm8(b) => self.add(b),
             Instruction::AddAR8(reg) => self.add(self.get_r8_byte(mmu, reg)),
+            Instruction::AddSpImm8(n) => self.add_sp_e8(n as i8),
             Instruction::AddHlR16(reg) => self.add_r16(R16::HL, self.registers.get_r16(reg)),
             Instruction::CpAImm8(b) => self.cp(b),
             Instruction::CpAR8(reg) => self.cp(self.get_r8_byte(mmu, reg)),
