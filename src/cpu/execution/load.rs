@@ -28,4 +28,22 @@ impl CPU {
     pub(in crate::cpu) fn ldh_addr(&mut self, mmu: &mut MMU, offset: u8, value: u8) {
         mmu.write_byte(0xFF00 + offset as u16, value)
     }
+
+    pub(in crate::cpu) fn ld_hl_sp(&mut self, e8: u8) {
+        let sp = self.registers.sp;
+        let offset = e8 as i8 as i16 as u16; // Convert i8 to u16 via i16 to preserve sign
+        let result = sp.wrapping_add(offset);
+
+        // Set flags based on the addition of the lower bytes
+        let half_carry = (sp & 0xF) + (offset & 0xF) > 0xF;
+        let carry = (sp & 0xFF) + (offset & 0xFF) > 0xFF;
+
+        self.registers.set_r16(R16::HL, result);
+
+        // Set flags
+        self.registers.f.zero = false;
+        self.registers.f.subtract = false;
+        self.registers.f.half_carry = half_carry;
+        self.registers.f.carry = carry;
+    }
 }

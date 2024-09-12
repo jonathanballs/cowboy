@@ -44,6 +44,8 @@ impl CPU {
             Instruction::LdhImm8memA(offset) => self.ldh_addr(mmu, offset, self.registers.a),
             Instruction::LdhAImm8mem(addr) => self.lda(mmu.read_byte(0xFF00 + addr as u16)),
             Instruction::LdhACmem => self.lda(mmu.read_byte(0xFF00 + self.registers.c as u16)),
+            Instruction::LdHlSpImm8(n) => self.ld_hl_sp(n),
+            Instruction::LdSpHl => self.ld_r16(R16::SP, self.registers.get_r16(R16::HL)),
 
             // Arithmetic
             Instruction::IncR8(reg) => self.inc(mmu, reg),
@@ -85,6 +87,9 @@ impl CPU {
             Instruction::SwapR8(reg) => self.swap(mmu, reg),
             Instruction::Scf => self.scf(),
             Instruction::RrR8(r) => self.rr(mmu, r),
+            Instruction::Rra => self.rra(mmu),
+            Instruction::Rrca => self.rrca(mmu),
+            Instruction::RrcR8(r) => self.rrc(mmu, r),
 
             // Jump instructions
             Instruction::JpImm16(addr) => self.jp(addr.wrapping_sub(length)),
@@ -130,6 +135,7 @@ impl CPU {
                         .yellow()
                 );
                 enable_debug();
+                dbg!(&instruction);
                 dbg!(self.registers.pc);
             }
         };
@@ -155,6 +161,15 @@ impl CPU {
 
                 self.push(mmu, return_pc);
                 self.registers.pc = 0x40;
+            }
+
+            // stat
+            if mmu.ie & 2 > 0 && mmu.ppu.stat_irq {
+                //mmu.ppu.stat_irq = false;
+                //self.ime = false;
+                //
+                //self.push(mmu, return_pc);
+                //self.registers.pc = 0x48;
             }
 
             // timer

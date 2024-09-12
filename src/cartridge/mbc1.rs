@@ -43,6 +43,7 @@ impl MBC for MBC1 {
         match addr {
             0x0..=0x1FFF => (), // enable ram in theory
             0x2000..=0x3FFF => self.rom_bank = value & 0x1F,
+            0x6000..=0x7FFF => (), // banking mode
             0xA000..=0xBFFF => self.ram[addr as usize - 0xA000] = value,
             _ => {
                 dbg!(addr);

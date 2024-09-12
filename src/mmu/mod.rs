@@ -76,6 +76,7 @@ impl MMU {
             // VBlank interrupt
             0xFF0F => {
                 (self.ppu.vblank_irq as u8)
+                    | ((self.ppu.stat_irq as u8) << 1)
                     | ((self.timer.timer_irq as u8) << 2)
                     | ((self.joypad.joypad_irq as u8) << 4)
             }

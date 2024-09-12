@@ -1,19 +1,22 @@
 use std::{
-    thread,
+    fmt, thread,
     time::{Duration, Instant},
 };
+
+use crate::debugger::is_gameboy_doctor;
 
 const VRAM_SIZE: usize = 0x2000;
 const VOAM_SIZE: usize = 0xA0;
 
 pub type Tile = [[u8; 8]; 8];
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PPU {
     frame_available: bool,
     frame_number: u32,
     last_frame_time: Instant,
     pub vblank_irq: bool,
+    pub stat_irq: bool,
 
     vram: [u8; VRAM_SIZE],
     voam: [u8; VOAM_SIZE],
@@ -42,6 +45,7 @@ impl PPU {
             frame_number: 1,
             last_frame_time: Instant::now(),
             vblank_irq: false,
+            stat_irq: false,
 
             scy: 0,
             scx: 0,
@@ -81,11 +85,15 @@ impl PPU {
                     self.vblank_irq = true
                 }
 
+                if self.ly == self.lyc && self.stat & 0x40 == 0x40 {
+                    self.stat_irq = true;
+                }
+
                 // Frame finished - flush to screen
                 if self.ly == 0 {
                     // Calculate how long to sleep
                     let elapsed = self.last_frame_time.elapsed();
-                    let frame_duration = Duration::from_secs_f64(1.0 / 240.0);
+                    let frame_duration = Duration::from_secs_f64(1.0 / 60.0);
 
                     if elapsed < frame_duration {
                         thread::sleep(frame_duration - elapsed);
@@ -110,7 +118,16 @@ impl PPU {
             0xFF10..=0xFF3F => return 0,
 
             0xFF40 => self.lcdc,
-            0xFF41 => self.stat,
+            0xFF41 => {
+                let mut ret = self.stat & 0xF8;
+                if self.ly == self.lyc {
+                    ret |= 0x4;
+                }
+
+                // just put it into mode 3...
+
+                return ret;
+            }
             0xFF42 => self.scy,
             0xFF43 => self.scx,
             0xFF44 => {
@@ -217,5 +234,21 @@ impl PPU {
         }
 
         ret
+    }
+}
+
+impl fmt::Debug for PPU {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PPU")
+            .field("scy", &self.scy)
+            .field("scx", &self.scx)
+            .field("ly", &self.ly)
+            .field("lyc", &self.lyc)
+            .field("wy", &self.wy)
+            .field("wx", &self.wx)
+            .field("lcdc", &self.lcdc)
+            .field("bgp", &self.bgp)
+            .field("modeclock", &self.modeclock)
+            .finish()
     }
 }
