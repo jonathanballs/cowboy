@@ -81,18 +81,18 @@ impl CPU {
 
     pub(in crate::cpu) fn sla(&mut self, mmu: &mut MMU, reg: R8) {
         let value = self.get_r8_byte(mmu, reg);
-        let new_value = value << 1;
-        self.set_r8_byte(mmu, reg, new_value);
+        let result = value << 1;
+        self.set_r8_byte(mmu, reg, result);
 
         self.registers.f.carry = value & 0x80 == 0x80;
         self.registers.f.half_carry = false;
         self.registers.f.subtract = false;
-        self.registers.f.zero = new_value == 0;
+        self.registers.f.zero = result == 0;
     }
 
     pub(in crate::cpu) fn sra(&mut self, mmu: &mut MMU, reg: R8) {
         let value = self.get_r8_byte(mmu, reg);
-        let result = value >> 1;
+        let result = (value >> 1) | value & 0x80;
         self.set_r8_byte(mmu, reg, result);
 
         self.registers.f.carry = value & 0x1 == 0x1;
