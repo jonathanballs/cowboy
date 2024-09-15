@@ -8,10 +8,27 @@ use crate::debugger::is_gameboy_doctor;
 const VRAM_SIZE: usize = 0x2000;
 const VOAM_SIZE: usize = 0xA0;
 
+const SCREEN_WIDTH: usize = 160;
+const SCREEN_HEIGHT: usize = 144;
+
+const TARGET_FPS: f64 = 30.0;
+
 pub type Tile = [[u8; 8]; 8];
+
+fn palette(id: u8) -> u32 {
+    match id {
+        0x0 => 0xFFFFFFFF,
+        0x1 => 0xFF666666,
+        0x2 => 0xFFBBBBBB,
+        0x3 => 0xFF000000,
+        _ => unreachable!(),
+    }
+}
 
 #[derive(Clone)]
 pub struct PPU {
+    pub frame_buffer: Vec<u32>,
+
     frame_available: bool,
     frame_number: u32,
     last_frame_time: Instant,
@@ -41,6 +58,7 @@ pub struct PPU {
 impl PPU {
     pub fn new() -> PPU {
         PPU {
+            frame_buffer: vec![0; SCREEN_WIDTH * SCREEN_HEIGHT],
             frame_available: false,
             frame_number: 1,
             last_frame_time: Instant::now(),
@@ -89,11 +107,15 @@ impl PPU {
                     self.stat_irq = true;
                 }
 
+                if self.ly < SCREEN_HEIGHT as u8 {
+                    self.render_scanline(self.ly);
+                }
+
                 // Frame finished - flush to screen
                 if self.ly == 0 {
                     // Calculate how long to sleep
                     let elapsed = self.last_frame_time.elapsed();
-                    let frame_duration = Duration::from_secs_f64(1.0 / 60.0);
+                    let frame_duration = Duration::from_secs_f64(1.0 / TARGET_FPS);
 
                     if elapsed < frame_duration {
                         thread::sleep(frame_duration - elapsed);
@@ -148,7 +170,7 @@ impl PPU {
             0xFF48 => self.obj_palette_0,
             0xFF49 => self.obj_palette_1,
 
-            0xFe00..=0xFE9F => self.voam[(addr - 0xFE00) as usize],
+            0xFE00..=0xFE9F => self.voam[(addr - 0xFE00) as usize],
 
             _ => {
                 println!("tried to read {:#04x}", addr);
@@ -195,29 +217,27 @@ impl PPU {
         return result;
     }
 
-    pub fn get_tile(&self, tile_index: u8) -> Tile {
-        let start_address = if self.lcdc & 0x10 > 0 {
+    pub fn get_tile_pixel(
+        &self,
+        tile_index: u8,
+        line_index: u16,
+        col_index: u16,
+        use_8000: bool,
+    ) -> u8 {
+        let start_address = if self.lcdc & 0x10 > 0 || use_8000 {
             0x8000 + ((tile_index as u16) * 16) as u16
         } else {
             let offset = ((tile_index as i8) as i16) * 16;
             0x9000_u16.wrapping_add(offset as u16)
         };
 
-        let mut ret = [[0u8; 8]; 8];
+        let byte_a = self.get_byte(start_address + (2 * line_index));
+        let byte_b = self.get_byte(start_address + (2 * line_index) + 1);
 
-        for i in 0..8 {
-            let byte_a = self.get_byte(start_address + (2 * i));
-            let byte_b = self.get_byte(start_address + (2 * i) + 1);
+        let bit1 = (byte_a >> 7 - col_index) & 1;
+        let bit2 = (byte_b >> 7 - col_index) & 1;
 
-            for j in 0..8 {
-                let bit1 = (byte_a >> 7 - j) & 1;
-                let bit2 = (byte_b >> 7 - j) & 1;
-
-                ret[j as usize][i as usize] = ((bit2 << 1) | bit1) as u8;
-            }
-        }
-
-        ret
+        return ((bit2 << 1) | bit1) as u8;
     }
 
     pub fn get_object(&self, tile_index: u8) -> Tile {
@@ -237,6 +257,69 @@ impl PPU {
         }
 
         ret
+    }
+
+    fn render_scanline(&mut self, line: u8) {
+        // calculate background scanline
+        let buffer_y_offset = (line as usize) * SCREEN_WIDTH;
+        let background_y = line.wrapping_add(self.scy);
+        let tile_map_row = background_y / 8;
+
+        for buffer_x_offset in 0..SCREEN_WIDTH {
+            let background_x = (buffer_x_offset + self.scx as usize) % 256;
+
+            let tile_map_index = (tile_map_row as usize * 32) + (background_x / 8);
+            let tile_index = self.get_byte(0x9800 + tile_map_index as u16);
+
+            let tile_line = background_y % 8;
+            let tile_col = background_x % 8;
+
+            let tile_pixel =
+                self.get_tile_pixel(tile_index, tile_line as u16, tile_col as u16, false);
+
+            self.frame_buffer[buffer_y_offset + buffer_x_offset] = palette(tile_pixel);
+        }
+
+        // For each object we should
+        for i in 0..40 {
+            let start_position = 0xFE00 + i * 4;
+
+            let object_y = self.get_byte(start_position);
+            let object_line = line.wrapping_sub(object_y).wrapping_add(16);
+            if object_line >= 8 {
+                continue;
+            }
+            let x_position = self.get_byte(start_position + 1);
+            let tile_index = self.get_byte(start_position + 2);
+            let flags = self.get_byte(start_position + 3);
+
+            let x_flip = flags & 0x20 == 0x20;
+            let y_flip = flags & 0x40 == 0x40;
+
+            for x_offset in 0..8 {
+                let x_position = if x_flip {
+                    (x_position as usize).wrapping_sub(x_offset as usize)
+                } else {
+                    (x_position as usize)
+                        .wrapping_add(x_offset as usize)
+                        .wrapping_sub(8)
+                };
+
+                if x_position >= SCREEN_WIDTH {
+                    continue;
+                }
+
+                let tile_line = if y_flip { 8 - object_line } else { object_line };
+
+                let tile_pixel = self.get_tile_pixel(tile_index, tile_line as u16, x_offset, true);
+
+                if tile_pixel == 0 {
+                    continue;
+                }
+
+                self.frame_buffer[buffer_y_offset + x_position] = palette(tile_pixel);
+            }
+        }
     }
 }
 

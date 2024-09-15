@@ -169,11 +169,11 @@ impl CPU {
 
             // stat
             if mmu.ie & 2 > 0 && mmu.ppu.stat_irq {
-                //mmu.ppu.stat_irq = false;
-                //self.ime = false;
-                //
-                //self.push(mmu, return_pc);
-                //self.registers.pc = 0x48;
+                mmu.ppu.stat_irq = false;
+                self.ime = false;
+
+                self.push(mmu, return_pc);
+                self.registers.pc = 0x48;
             }
 
             // timer

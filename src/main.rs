@@ -20,7 +20,6 @@ use std::thread;
 
 use gameboy::GameBoy;
 use minifb::Key;
-use mmu::ppu::PPU;
 use renderer::window_loop;
 
 pub static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
@@ -48,7 +47,7 @@ fn main() {
         enable_gameboy_doctor();
     }
 
-    let (tx, rx) = mpsc::channel::<PPU>();
+    let (tx, rx) = mpsc::channel::<Vec<u32>>();
     let (tx_key, rx_key) = mpsc::channel::<(bool, Key)>();
     let rom = read_file_to_bytes(rom_path.as_str()).unwrap();
     let game_title = CartridgeHeader::new(&rom).unwrap().title();
@@ -57,7 +56,7 @@ fn main() {
     window_loop(rx, tx_key, &game_title);
 }
 
-fn emulator_loop(rom: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) {
+fn emulator_loop(rom: Vec<u8>, tx: Sender<Vec<u32>>, rx: Receiver<(bool, Key)>) {
     let mut gameboy = GameBoy::new(rom);
 
     ctrlc::set_handler(move || {
@@ -84,7 +83,7 @@ fn emulator_loop(rom: Vec<u8>, tx: Sender<PPU>, rx: Receiver<(bool, Key)>) {
 
         // Render window
         if gameboy.mmu.ppu.get_and_reset_frame_available() {
-            let _ = tx.send(gameboy.mmu.ppu.clone());
+            let _ = tx.send(gameboy.mmu.ppu.frame_buffer.clone());
         }
 
         // Handle joypad input
