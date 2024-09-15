@@ -1,9 +1,5 @@
 use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
-use std::{
-    collections::VecDeque,
-    sync::mpsc::{Receiver, Sender, TryRecvError},
-    time::Instant,
-};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 const SCREEN_WIDTH: usize = 160;
 const SCREEN_HEIGHT: usize = 144;

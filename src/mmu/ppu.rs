@@ -11,7 +11,7 @@ const VOAM_SIZE: usize = 0xA0;
 const SCREEN_WIDTH: usize = 160;
 const SCREEN_HEIGHT: usize = 144;
 
-const TARGET_FPS: f64 = 30.0;
+const TARGET_FPS: f64 = 60.0;
 
 pub type Tile = [[u8; 8]; 8];
 
