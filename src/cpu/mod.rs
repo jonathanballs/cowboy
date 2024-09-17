@@ -134,18 +134,10 @@ impl CPU {
                 }
             }
             Instruction::Stop => {}
-
-            // Unhandled instructions
-            _ => {
-                println!(
-                    "{}",
-                    "Sorry cowboy but it looks like that instruction just ain't handled \nyet - \
-                        get back out to the ranch and fix that dang emulator!"
-                        .yellow()
-                );
+            Instruction::ILLEGAL => {
+                println!("{}", "Illegal instruction encountered.".red());
+                length = 0;
                 enable_debug();
-                dbg!(&instruction);
-                dbg!(self.registers.pc);
             }
         };
 
