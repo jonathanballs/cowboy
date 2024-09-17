@@ -285,7 +285,7 @@ impl PPU {
 
             for x_offset in 0..8 {
                 let x_position = if x_flip {
-                    (x_position as usize).wrapping_sub(x_offset as usize)
+                    (x_position as usize).wrapping_sub(x_offset as usize + 1)
                 } else {
                     (x_position as usize)
                         .wrapping_add(x_offset as usize)
