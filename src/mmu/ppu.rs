@@ -15,16 +15,6 @@ const TARGET_FPS: f64 = 60.0;
 
 pub type Tile = [[u8; 8]; 8];
 
-fn palette(id: u8) -> u32 {
-    match id {
-        0x0 => 0xFFFFFFFF,
-        0x1 => 0xFF666666,
-        0x2 => 0xFFBBBBBB,
-        0x3 => 0xFF000000,
-        _ => unreachable!(),
-    }
-}
-
 #[derive(Clone)]
 pub struct PPU {
     pub frame_buffer: Vec<u32>,
@@ -95,6 +85,10 @@ impl PPU {
 
             // Full line takes 114 ticks
             if self.modeclock >= 456 {
+                if self.ly < SCREEN_HEIGHT as u8 {
+                    self.render_scanline(self.ly);
+                }
+
                 self.modeclock -= 456;
                 self.ly = (self.ly + 1) % 154;
 
@@ -105,10 +99,6 @@ impl PPU {
 
                 if self.ly == self.lyc && self.stat & 0x40 == 0x40 {
                     self.stat_irq = true;
-                }
-
-                if self.ly < SCREEN_HEIGHT as u8 {
-                    self.render_scanline(self.ly);
                 }
 
                 // Frame finished - flush to screen
@@ -259,13 +249,85 @@ impl PPU {
         ret
     }
 
-    fn render_scanline(&mut self, line: u8) {
-        // calculate background scanline
+    fn palette(&self, id: u8) -> u32 {
+        match id {
+            0x0 => 0xFFFFFFFF,
+            0x1 => 0xFF666666,
+            0x2 => 0xFFBBBBBB,
+            0x3 => 0xFF000000,
+            _ => unreachable!(),
+        }
+    }
+
+    fn render_objects(&mut self, line: u8) {
+        if self.lcdc & 0x2 != 0x2 {
+            return;
+        }
+
         let buffer_y_offset = (line as usize) * SCREEN_WIDTH;
-        let background_y = line.wrapping_add(self.scy);
-        let tile_map_row = background_y / 8;
+        let mut num_objects_rendered = 0;
+
+        for i in 0..40 {
+            let mut did_render_object = false;
+            let start_position = 0xFE00 + i * 4;
+
+            let object_y = self.get_byte(start_position);
+            let object_line = line.wrapping_sub(object_y).wrapping_add(16);
+            if object_line >= 8 {
+                continue;
+            }
+            let x_position = self.get_byte(start_position + 1);
+            let tile_index = self.get_byte(start_position + 2);
+            let flags = self.get_byte(start_position + 3);
+
+            let x_flip = flags & 0x20 == 0x20;
+            let y_flip = flags & 0x40 == 0x40;
+
+            for x_offset in 0..8 {
+                let x_position = if x_flip {
+                    (x_position as usize).wrapping_sub(x_offset as usize)
+                } else {
+                    (x_position as usize)
+                        .wrapping_add(x_offset as usize)
+                        .wrapping_sub(8)
+                };
+
+                if x_position >= SCREEN_WIDTH {
+                    continue;
+                }
+
+                let tile_line = if y_flip { 8 - object_line } else { object_line };
+
+                let tile_pixel = self.get_tile_pixel(tile_index, tile_line as u16, x_offset, true);
+
+                if tile_pixel == 0 {
+                    continue;
+                }
+
+                self.frame_buffer[buffer_y_offset + x_position] = self.palette(tile_pixel);
+                did_render_object = true;
+            }
+
+            if did_render_object {
+                num_objects_rendered += 1;
+            }
+
+            if num_objects_rendered >= 10 {
+                break;
+            }
+        }
+    }
+
+    fn render_background(&mut self, line: u8) {
+        if self.lcdc & 0x1 != 0x1 {
+            return;
+        }
+
+        let buffer_y_offset = (line as usize) * SCREEN_WIDTH;
 
         // draw background
+        let background_y = line.wrapping_add(self.scy);
+        let tile_map_row = background_y / 8;
         for buffer_x_offset in 0..SCREEN_WIDTH {
             let background_x = (buffer_x_offset + self.scx as usize) % 256;
 
@@ -283,85 +345,53 @@ impl PPU {
             let tile_pixel =
                 self.get_tile_pixel(tile_index, tile_line as u16, tile_col as u16, false);
 
-            self.frame_buffer[buffer_y_offset + buffer_x_offset] = palette(tile_pixel);
+            self.frame_buffer[buffer_y_offset + buffer_x_offset] = self.palette(tile_pixel);
+        }
+    }
+
+    fn render_window(&mut self, line: u8) {
+        let buffer_y_offset = (line as usize) * SCREEN_WIDTH;
+        if self.lcdc & 0x21 != 0x21 {
+            return;
         }
 
         // draw window
-        if self.lcdc & 0x20 == 0x20 {
-            for buffer_x_offset in 0..SCREEN_WIDTH {
-                let window_x = buffer_x_offset
-                    .wrapping_sub(self.wx as usize)
-                    .wrapping_add(7);
-                if window_x >= SCREEN_WIDTH {
-                    continue;
-                };
+        for buffer_x_offset in 0..SCREEN_WIDTH {
+            let window_x = buffer_x_offset
+                .wrapping_sub(self.wx as usize)
+                .wrapping_add(7);
+            if window_x >= SCREEN_WIDTH {
+                continue;
+            };
 
-                let window_y = (line as usize).wrapping_sub(self.wy as usize);
-                if window_y as usize >= SCREEN_HEIGHT {
-                    continue;
-                };
+            let window_y = (line as usize).wrapping_sub(self.wy as usize);
+            if window_y as usize >= SCREEN_HEIGHT {
+                continue;
+            };
 
-                let tile_map_index = ((window_y / 8) as usize * 32) + (window_x / 8);
-                let tile_map_data_area = if self.lcdc & 0x40 == 0x40 {
-                    0x9C00
-                } else {
-                    0x9800
-                };
-                let tile_index = self.get_byte(tile_map_data_area + tile_map_index as u16);
+            let tile_map_index = ((window_y / 8) as usize * 32) + (window_x / 8);
+            let tile_map_data_area = if self.lcdc & 0x40 == 0x40 {
+                0x9C00
+            } else {
+                0x9800
+            };
+            let tile_index = self.get_byte(tile_map_data_area + tile_map_index as u16);
 
-                let tile_line = window_y % 8;
-                let tile_col = window_x % 8;
+            let tile_line = window_y % 8;
+            let tile_col = window_x % 8;
 
-                let tile_pixel =
-                    self.get_tile_pixel(tile_index, tile_line as u16, tile_col as u16, false);
+            let tile_pixel =
+                self.get_tile_pixel(tile_index, tile_line as u16, tile_col as u16, false);
 
-                self.frame_buffer[buffer_y_offset + buffer_x_offset] = palette(tile_pixel);
-            }
+            self.frame_buffer[buffer_y_offset + buffer_x_offset] = self.palette(tile_pixel);
         }
+    }
 
-        // For each object we should
-        if self.lcdc & 0x2 == 0x2 {
-            for i in 0..40 {
-                let start_position = 0xFE00 + i * 4;
-
-                let object_y = self.get_byte(start_position);
-                let object_line = line.wrapping_sub(object_y).wrapping_add(16);
-                if object_line >= 8 {
-                    continue;
-                }
-                let x_position = self.get_byte(start_position + 1);
-                let tile_index = self.get_byte(start_position + 2);
-                let flags = self.get_byte(start_position + 3);
-
-                let x_flip = flags & 0x20 == 0x20;
-                let y_flip = flags & 0x40 == 0x40;
-
-                for x_offset in 0..8 {
-                    let x_position = if x_flip {
-                        (x_position as usize).wrapping_sub(x_offset as usize)
-                    } else {
-                        (x_position as usize)
-                            .wrapping_add(x_offset as usize)
-                            .wrapping_sub(8)
-                    };
-
-                    if x_position >= SCREEN_WIDTH {
-                        continue;
-                    }
-
-                    let tile_line = if y_flip { 8 - object_line } else { object_line };
-
-                    let tile_pixel =
-                        self.get_tile_pixel(tile_index, tile_line as u16, x_offset, true);
-
-                    if tile_pixel == 0 {
-                        continue;
-                    }
-
-                    self.frame_buffer[buffer_y_offset + x_position] = palette(tile_pixel);
-                }
-            }
-        }
+    fn render_scanline(&mut self, line: u8) {
+        // calculate background scanline
+        self.render_background(line);
+        self.render_window(line);
+        self.render_objects(line);
     }
 }
 
