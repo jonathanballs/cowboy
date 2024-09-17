@@ -128,7 +128,12 @@ impl CPU {
                     self.ime = true;
                 }
             }
-            Instruction::Halt => length = 0,
+            Instruction::Halt => {
+                if mmu.ie & mmu.read_byte(0xFF0F) == 0 {
+                    length = 0
+                }
+            }
+            Instruction::Stop => {}
 
             // Unhandled instructions
             _ => {
@@ -151,7 +156,7 @@ impl CPU {
         mmu.timer.do_cycles(cycles);
 
         // Handle interrupts
-        if (self.ime && !just_set_ei) || matches!(instruction, Instruction::Halt) {
+        if self.ime && !just_set_ei {
             let return_pc = if matches!(instruction, Instruction::Halt) {
                 self.registers.pc + 1
             } else {
