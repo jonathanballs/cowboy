@@ -8,8 +8,8 @@ use crate::debugger::is_gameboy_doctor;
 const VRAM_SIZE: usize = 0x2000;
 const VOAM_SIZE: usize = 0xA0;
 
-const SCREEN_WIDTH: usize = 160;
-const SCREEN_HEIGHT: usize = 144;
+pub const SCREEN_WIDTH: usize = 160;
+pub const SCREEN_HEIGHT: usize = 144;
 
 const TARGET_FPS: f64 = 60.0;
 
@@ -265,11 +265,17 @@ impl PPU {
         let background_y = line.wrapping_add(self.scy);
         let tile_map_row = background_y / 8;
 
+        // draw background
         for buffer_x_offset in 0..SCREEN_WIDTH {
             let background_x = (buffer_x_offset + self.scx as usize) % 256;
 
             let tile_map_index = (tile_map_row as usize * 32) + (background_x / 8);
-            let tile_index = self.get_byte(0x9800 + tile_map_index as u16);
+            let tile_map_data_area = if self.lcdc & 0x8 == 0x8 {
+                0x9C00
+            } else {
+                0x9800
+            };
+            let tile_index = self.get_byte(tile_map_data_area + tile_map_index as u16);
 
             let tile_line = background_y % 8;
             let tile_col = background_x % 8;
@@ -280,44 +286,80 @@ impl PPU {
             self.frame_buffer[buffer_y_offset + buffer_x_offset] = palette(tile_pixel);
         }
 
-        // For each object we should
-        for i in 0..40 {
-            let start_position = 0xFE00 + i * 4;
-
-            let object_y = self.get_byte(start_position);
-            let object_line = line.wrapping_sub(object_y).wrapping_add(16);
-            if object_line >= 8 {
-                continue;
-            }
-            let x_position = self.get_byte(start_position + 1);
-            let tile_index = self.get_byte(start_position + 2);
-            let flags = self.get_byte(start_position + 3);
-
-            let x_flip = flags & 0x20 == 0x20;
-            let y_flip = flags & 0x40 == 0x40;
-
-            for x_offset in 0..8 {
-                let x_position = if x_flip {
-                    (x_position as usize).wrapping_sub(x_offset as usize)
-                } else {
-                    (x_position as usize)
-                        .wrapping_add(x_offset as usize)
-                        .wrapping_sub(8)
+        // draw window
+        if self.lcdc & 0x20 == 0x20 {
+            for buffer_x_offset in 0..SCREEN_WIDTH {
+                let window_x = buffer_x_offset
+                    .wrapping_sub(self.wx as usize)
+                    .wrapping_add(7);
+                if window_x >= SCREEN_WIDTH {
+                    continue;
                 };
 
-                if x_position >= SCREEN_WIDTH {
+                let window_y = (line as usize).wrapping_sub(self.wy as usize);
+                if window_y as usize >= SCREEN_HEIGHT {
+                    continue;
+                };
+
+                let tile_map_index = ((window_y / 8) as usize * 32) + (window_x / 8);
+                let tile_map_data_area = if self.lcdc & 0x40 == 0x40 {
+                    0x9C00
+                } else {
+                    0x9800
+                };
+                let tile_index = self.get_byte(tile_map_data_area + tile_map_index as u16);
+
+                let tile_line = window_y % 8;
+                let tile_col = window_x % 8;
+
+                let tile_pixel =
+                    self.get_tile_pixel(tile_index, tile_line as u16, tile_col as u16, false);
+
+                self.frame_buffer[buffer_y_offset + buffer_x_offset] = palette(tile_pixel);
+            }
+        }
+
+        // For each object we should
+        if self.lcdc & 0x2 == 0x2 {
+            for i in 0..40 {
+                let start_position = 0xFE00 + i * 4;
+
+                let object_y = self.get_byte(start_position);
+                let object_line = line.wrapping_sub(object_y).wrapping_add(16);
+                if object_line >= 8 {
                     continue;
                 }
+                let x_position = self.get_byte(start_position + 1);
+                let tile_index = self.get_byte(start_position + 2);
+                let flags = self.get_byte(start_position + 3);
 
-                let tile_line = if y_flip { 8 - object_line } else { object_line };
+                let x_flip = flags & 0x20 == 0x20;
+                let y_flip = flags & 0x40 == 0x40;
 
-                let tile_pixel = self.get_tile_pixel(tile_index, tile_line as u16, x_offset, true);
+                for x_offset in 0..8 {
+                    let x_position = if x_flip {
+                        (x_position as usize).wrapping_sub(x_offset as usize)
+                    } else {
+                        (x_position as usize)
+                            .wrapping_add(x_offset as usize)
+                            .wrapping_sub(8)
+                    };
 
-                if tile_pixel == 0 {
-                    continue;
+                    if x_position >= SCREEN_WIDTH {
+                        continue;
+                    }
+
+                    let tile_line = if y_flip { 8 - object_line } else { object_line };
+
+                    let tile_pixel =
+                        self.get_tile_pixel(tile_index, tile_line as u16, x_offset, true);
+
+                    if tile_pixel == 0 {
+                        continue;
+                    }
+
+                    self.frame_buffer[buffer_y_offset + x_position] = palette(tile_pixel);
                 }
-
-                self.frame_buffer[buffer_y_offset + x_position] = palette(tile_pixel);
             }
         }
     }

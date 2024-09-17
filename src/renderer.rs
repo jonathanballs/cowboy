@@ -1,29 +1,7 @@
 use minifb::{Key, KeyRepeat, Scale, Window, WindowOptions};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
-const SCREEN_WIDTH: usize = 160;
-const SCREEN_HEIGHT: usize = 144;
-
-fn most_recent_frame(rx: &Receiver<Vec<u32>>) -> Option<Vec<u32>> {
-    let mut latest_frame = None;
-
-    loop {
-        match rx.try_recv() {
-            Ok(frame) => {
-                // Update the latest frame
-                latest_frame = Some(frame);
-            }
-            Err(TryRecvError::Empty) => {
-                break;
-            }
-            Err(TryRecvError::Disconnected) => {
-                panic!("");
-            }
-        }
-    }
-
-    latest_frame
-}
+use crate::mmu::ppu::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
 pub fn window_loop(rx: Receiver<Vec<u32>>, tx: Sender<(bool, Key)>, game_title: &String) {
     let mut window = Window::new(
@@ -44,7 +22,7 @@ pub fn window_loop(rx: Receiver<Vec<u32>>, tx: Sender<(bool, Key)>, game_title: 
                 .unwrap();
         }
 
-        // dispatch unreleased keys
+        // dispatch pressed keys
         window
             .get_keys_pressed(KeyRepeat::No)
             .iter()
@@ -56,4 +34,25 @@ pub fn window_loop(rx: Receiver<Vec<u32>>, tx: Sender<(bool, Key)>, game_title: 
             .iter()
             .for_each(|key| tx.send((false, *key)).unwrap());
     }
+}
+
+fn most_recent_frame(rx: &Receiver<Vec<u32>>) -> Option<Vec<u32>> {
+    let mut latest_frame = None;
+
+    loop {
+        match rx.try_recv() {
+            Ok(frame) => {
+                // Update the latest frame
+                latest_frame = Some(frame);
+            }
+            Err(TryRecvError::Empty) => {
+                break;
+            }
+            Err(TryRecvError::Disconnected) => {
+                panic!("");
+            }
+        }
+    }
+
+    latest_frame
 }
