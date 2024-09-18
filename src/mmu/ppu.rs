@@ -249,8 +249,9 @@ impl PPU {
         ret
     }
 
-    fn palette(&self, id: u8) -> u32 {
-        match id {
+    fn palette_colour(&self, palette: u8, id: u8) -> u32 {
+        let color_id = (palette >> (id * 2)) & 3;
+        match color_id {
             0x0 => 0xFFFFFFFF,
             0x1 => 0xFF666666,
             0x2 => 0xFFBBBBBB,
@@ -296,7 +297,7 @@ impl PPU {
                     continue;
                 }
 
-                let tile_line = if y_flip { 8 - object_line } else { object_line };
+                let tile_line = if y_flip { 7 - object_line } else { object_line };
 
                 let tile_pixel = self.get_tile_pixel(tile_index, tile_line as u16, x_offset, true);
 
@@ -304,7 +305,14 @@ impl PPU {
                     continue;
                 }
 
-                self.frame_buffer[buffer_y_offset + x_position] = self.palette(tile_pixel);
+                let object_palette = if flags & 0x10 == 0x10 {
+                    self.obj_palette_1
+                } else {
+                    self.obj_palette_0
+                };
+
+                self.frame_buffer[buffer_y_offset + x_position] =
+                    self.palette_colour(object_palette, tile_pixel);
                 did_render_object = true;
             }
 
@@ -325,7 +333,6 @@ impl PPU {
 
         let buffer_y_offset = (line as usize) * SCREEN_WIDTH;
 
-        // draw background
         let background_y = line.wrapping_add(self.scy);
         let tile_map_row = background_y / 8;
         for buffer_x_offset in 0..SCREEN_WIDTH {
@@ -345,7 +352,8 @@ impl PPU {
             let tile_pixel =
                 self.get_tile_pixel(tile_index, tile_line as u16, tile_col as u16, false);
 
-            self.frame_buffer[buffer_y_offset + buffer_x_offset] = self.palette(tile_pixel);
+            self.frame_buffer[buffer_y_offset + buffer_x_offset] =
+                self.palette_colour(self.bgp, tile_pixel);
         }
     }
 
@@ -355,7 +363,6 @@ impl PPU {
             return;
         }
 
-        // draw window
         for buffer_x_offset in 0..SCREEN_WIDTH {
             let window_x = buffer_x_offset
                 .wrapping_sub(self.wx as usize)
@@ -383,12 +390,12 @@ impl PPU {
             let tile_pixel =
                 self.get_tile_pixel(tile_index, tile_line as u16, tile_col as u16, false);
 
-            self.frame_buffer[buffer_y_offset + buffer_x_offset] = self.palette(tile_pixel);
+            self.frame_buffer[buffer_y_offset + buffer_x_offset] =
+                self.palette_colour(self.bgp, tile_pixel);
         }
     }
 
     fn render_scanline(&mut self, line: u8) {
-        // calculate background scanline
         self.render_background(line);
         self.render_window(line);
         self.render_objects(line);
