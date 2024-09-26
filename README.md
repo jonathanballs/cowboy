@@ -1,12 +1,14 @@
 # Cowboy
 
-Howdy! Cowboy is a gameboy emulator that I've been building in Rust. I'm doing
-it mostly as an educational exercise to learn not just about Rust but about
-emulation as well. It also comes with a pretty nifty decompiler and debugger
-built in which is very useful while developing! It is certainly not complete
-(or playable really) but it can load some games and even get to main menu. My
-main goal at the moment is to focus on emulating Tetris as it's one of the
-simplest games on the platform.
+Howdy! Cowboy is a Game Boy emulator built in Rust. It was built as an
+educational exercise to learn both Rust and about emulation however it is
+pretty much feature complete and runs most games which target the original Game
+Boy. In the future I may extend it to support Game Boy Color. Cowboy also comes
+with a pretty nifty debug tooling for games running in the emulator. The
+tooling was created primarily to support the development of Cowboy however it
+is useful for understanding Game Boy games work in general since it includes a
+full decompiler, breakpoints, as well as full memory, register and interrupt
+inspection.
 
 ![Screenshot 2024-09-03 at 18 44
 30](https://github.com/user-attachments/assets/79f27012-5c56-417e-9d11-ecea3c862667)
@@ -14,10 +16,16 @@ simplest games on the platform.
 ## Running
 
 You will need `rust` and `cargo` installed. By default the emulator will run
-the tetris rom from the `roms/` directory.
+the super mario land rom from the `roms/` directory.
 
 ```
 $ cargo run
+```
+
+You can also specify a ROM by passing the path as an argument:
+
+```
+$ cargo run roms/tetris.gb
 ```
 
 ## References
