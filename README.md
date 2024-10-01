@@ -10,8 +10,8 @@ is useful for understanding Game Boy games work in general since it includes a
 full decompiler, breakpoints, as well as full memory, register and interrupt
 inspection.
 
-![Screenshot 2024-09-03 at 18 44
-30](https://github.com/user-attachments/assets/79f27012-5c56-417e-9d11-ecea3c862667)
+<img width="752" alt="Screenshot 2024-10-01 at 12 52 30" src="https://github.com/user-attachments/assets/424f71d1-b2c7-4ab1-a3d6-0058aca6f100">
+
 
 ## Running
 
