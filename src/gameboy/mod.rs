@@ -53,10 +53,9 @@ impl GameBoy {
         let opcode = self.mmu.read_byte(self.cpu.registers.pc);
         let arg_1 = self.mmu.read_byte(self.cpu.registers.pc + 1);
         let arg_2 = self.mmu.read_byte(self.cpu.registers.pc + 2);
+        let (ins, _, _) = parse(opcode, arg_1, arg_2);
 
-        match parse(opcode, arg_1, arg_2) {
-            (ins, _, _) => ins,
-        }
+        ins
     }
 
     fn print_gameboy_doctor(&self) {

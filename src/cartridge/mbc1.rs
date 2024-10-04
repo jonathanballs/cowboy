@@ -27,9 +27,9 @@ impl MBC for MBC1 {
                     self.rom_bank as u16
                 };
 
-                let idx = bank * 0x4000 | (addr & 0x3FFF);
+                let idx = (bank * 0x4000) | (addr & 0x3FFF);
 
-                return self.rom[idx as usize];
+                self.rom[idx as usize]
             }
             0xA000..=0xBFFF => self.ram[addr as usize - 0xA000],
             _ => {

@@ -15,7 +15,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u16, u8) {
     let imm16: u16 = (arg2 as u16) << 8 | arg1 as u16;
     let imm8: u8 = arg1;
 
-    return match opcode {
+    match opcode {
         // Block 0
         0x00 => (Instruction::Nop, 1, 4),
         0x01 => (Instruction::LdR16Imm16(R16::BC, imm16), 3, 12),
@@ -99,7 +99,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u16, u8) {
                 _ => 4,
             };
 
-            return match (opcode >> 3) & 0x7 {
+            match (opcode >> 3) & 0x7 {
                 0 => (Instruction::AddAR8(operand), 1, cycle_count),
                 1 => (Instruction::AdcAR8(operand), 1, cycle_count),
                 2 => (Instruction::SubAR8(operand), 1, cycle_count),
@@ -108,7 +108,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u16, u8) {
                 5 => (Instruction::XorAR8(operand), 1, cycle_count),
                 6 => (Instruction::OrAR8(operand), 1, cycle_count),
                 _ => (Instruction::CpAR8(operand), 1, cycle_count),
-            };
+            }
         }
 
         // Block 3
@@ -178,7 +178,7 @@ pub fn parse(opcode: u8, arg1: u8, arg2: u8) -> (Instruction, u16, u8) {
         0xF4 => (Instruction::ILLEGAL, 1, 4),
         0xFC => (Instruction::ILLEGAL, 1, 4),
         0xFD => (Instruction::ILLEGAL, 1, 4),
-    };
+    }
 }
 
 fn parse_prefixed(opcode: u8) -> (Instruction, u16, u8) {
@@ -208,7 +208,7 @@ fn parse_prefixed(opcode: u8) -> (Instruction, u16, u8) {
         }
     };
 
-    return match instruction {
+    match instruction {
         Instruction::BitB3R8(_, R8::HL) => (instruction, 2, 12),
         Instruction::RlcR8(R8::HL) => (instruction, 2, 16),
         Instruction::RlR8(R8::HL) => (instruction, 2, 16),
@@ -221,7 +221,7 @@ fn parse_prefixed(opcode: u8) -> (Instruction, u16, u8) {
         Instruction::ResB3R8(_, R8::HL) => (instruction, 2, 16),
         Instruction::SetB3R8(_, R8::HL) => (instruction, 2, 16),
         ins => (ins, 2, 8),
-    };
+    }
 }
 
 #[derive(Debug)]
@@ -335,7 +335,7 @@ mod test {
 
         let error_message = format!(
             "{} (opcode: {:#04X} {:#04X})",
-            json["mnemonic"].to_string(),
+            json["mnemonic"],
             opcode,
             imm8
         );

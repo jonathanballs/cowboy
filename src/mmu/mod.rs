@@ -117,7 +117,7 @@ impl MMU {
 
             // Interrupt
             0xFF0F => {
-                self.ppu.vblank_irq = value & 0x1 == 0x2;
+                self.ppu.vblank_irq = value & 0x1 == 0x1;
                 self.ppu.stat_irq = value & 0x2 == 0x2;
                 self.timer.timer_irq = value & 0x4 == 0x4;
                 self.joypad.joypad_irq = value & 0x8 == 0x8;

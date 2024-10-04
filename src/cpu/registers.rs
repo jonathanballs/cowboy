@@ -20,6 +20,12 @@ pub struct Registers {
     pub pc: u16,
 }
 
+impl Default for Registers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Registers {
     pub fn new() -> Registers {
         if is_gameboy_doctor() {

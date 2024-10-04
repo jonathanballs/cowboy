@@ -10,6 +10,12 @@ pub struct Timer {
     step: u32,
 }
 
+impl Default for Timer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Timer {
     pub fn new() -> Timer {
         Timer {

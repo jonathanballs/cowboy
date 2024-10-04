@@ -45,6 +45,12 @@ pub struct PPU {
     pub stat: u8,
 }
 
+impl Default for PPU {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PPU {
     pub fn new() -> PPU {
         PPU {
@@ -127,7 +133,7 @@ impl PPU {
             0x8000..=0x9FFF => self.vram[(addr - 0x8000) as usize],
 
             // Sound.
-            0xFF10..=0xFF3F => return 0,
+            0xFF10..=0xFF3F => 0,
 
             0xFF40 => self.lcdc,
             0xFF41 => {
@@ -138,7 +144,7 @@ impl PPU {
 
                 // just put it into mode 3...
 
-                return ret;
+                ret
             }
             0xFF42 => self.scy,
             0xFF43 => self.scx,
@@ -190,7 +196,7 @@ impl PPU {
             0xFF4B => self.wx = value,
             0xFF4D => (),
 
-            0xFe00..=0xFE9F => self.voam[(addr - 0xFE00) as usize] = value,
+            0xFE00..=0xFE9F => self.voam[(addr - 0xFE00) as usize] = value,
 
             0xFF7F => (),
 
@@ -204,7 +210,7 @@ impl PPU {
     pub fn get_and_reset_frame_available(&mut self) -> bool {
         let result = self.frame_available;
         self.frame_available = false;
-        return result;
+        result
     }
 
     pub fn get_tile_pixel(
@@ -215,7 +221,7 @@ impl PPU {
         use_8000: bool,
     ) -> u8 {
         let start_address = if self.lcdc & 0x10 > 0 || use_8000 {
-            0x8000 + ((tile_index as u16) * 16) as u16
+            0x8000 + ((tile_index as u16) * 16)
         } else {
             let offset = ((tile_index as i8) as i16) * 16;
             0x9000_u16.wrapping_add(offset as u16)
@@ -224,14 +230,14 @@ impl PPU {
         let byte_a = self.get_byte(start_address + (2 * line_index));
         let byte_b = self.get_byte(start_address + (2 * line_index) + 1);
 
-        let bit1 = (byte_a >> 7 - col_index) & 1;
-        let bit2 = (byte_b >> 7 - col_index) & 1;
+        let bit1 = (byte_a >> (7 - col_index)) & 1;
+        let bit2 = (byte_b >> (7 - col_index)) & 1;
 
-        return ((bit2 << 1) | bit1) as u8;
+        (bit2 << 1) | bit1
     }
 
     pub fn get_object(&self, tile_index: u8) -> Tile {
-        let start_address = 0x8000 + ((tile_index as u16) * 16) as u16;
+        let start_address = 0x8000 + ((tile_index as u16) * 16);
         let mut ret = [[0u8; 8]; 8];
 
         for i in 0..8 {
@@ -239,10 +245,10 @@ impl PPU {
             let byte_b = self.get_byte(start_address + (2 * i) + 1);
 
             for j in 0..8 {
-                let bit1 = (byte_a >> 7 - j) & 1;
-                let bit2 = (byte_b >> 7 - j) & 1;
+                let bit1 = (byte_a >> (7 - j)) & 1;
+                let bit2 = (byte_b >> (7 - j)) & 1;
 
-                ret[j as usize][i as usize] = ((bit2 << 1) | bit1) as u8;
+                ret[j as usize][i as usize] = (bit2 << 1) | bit1;
             }
         }
 
@@ -372,11 +378,11 @@ impl PPU {
             };
 
             let window_y = (line as usize).wrapping_sub(self.wy as usize);
-            if window_y as usize >= SCREEN_HEIGHT {
+            if window_y >= SCREEN_HEIGHT {
                 continue;
             };
 
-            let tile_map_index = ((window_y / 8) as usize * 32) + (window_x / 8);
+            let tile_map_index = ((window_y / 8) * 32) + (window_x / 8);
             let tile_map_data_area = if self.lcdc & 0x40 == 0x40 {
                 0x9C00
             } else {

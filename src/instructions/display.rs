@@ -37,7 +37,6 @@ impl fmt::Display for Instruction {
         let args: &mut Vec<String> = match buffer.find('(') {
             Some(index) => &mut buffer[index + 1..buffer.len() - 1]
                 .split(',')
-                .into_iter()
                 .map(|s| s.trim())
                 .map(|s| {
                     s.parse::<i32>()
@@ -63,7 +62,7 @@ impl fmt::Display for Instruction {
                 "a" => "a".cyan().to_string(),
 
                 // Memory address
-                "r16mem" => format!("{}", args.pop().unwrap()).blue().to_string(),
+                "r16mem" => args.pop().unwrap().to_string().blue().to_string(),
                 "imm8mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
                 "imm16mem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
                 "cmem" => format!("[{}]", args.pop().unwrap()).blue().to_string(),
@@ -77,7 +76,7 @@ impl fmt::Display for Instruction {
             .join(" ");
 
         // Process the captured string (example: convert to uppercase)
-        let processed = format!("{}", instruction_formatted);
+        let processed = instruction_formatted.to_string();
 
         // Write the processed string to the actual formatter
         write!(f, "{}", processed.to_lowercase())

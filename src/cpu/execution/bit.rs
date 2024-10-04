@@ -31,7 +31,7 @@ impl CPU {
      */
     pub(in crate::cpu) fn swap(&mut self, mmu: &mut MMU, r: R8) {
         let register_value = self.get_r8_byte(mmu, r);
-        let result = (register_value >> 4) | (register_value << 4);
+        let result = register_value.rotate_left(4);
         self.set_r8_byte(mmu, r, result);
         self.registers.f.zero = result == 0;
         self.registers.f.carry = false;
@@ -56,7 +56,7 @@ impl CPU {
 
     pub(in crate::cpu) fn rlc(&mut self, mmu: &mut MMU, r: R8) {
         let value = self.get_r8_byte(mmu, r);
-        let result = (value << 1) | (value >> 7);
+        let result = value.rotate_left(1);
         self.set_r8_byte(mmu, r, result);
         self.registers.f.zero = result == 0;
         self.registers.f.subtract = false;
@@ -137,7 +137,7 @@ impl CPU {
 
     pub(in crate::cpu) fn rrc(&mut self, mmu: &mut MMU, r: R8) {
         let value = self.get_r8_byte(mmu, r);
-        let result = value >> 1 | (value << 7);
+        let result = value.rotate_right(1);
         self.registers.f.carry = value & 1 > 0;
         self.registers.f.half_carry = false;
         self.registers.f.subtract = false;

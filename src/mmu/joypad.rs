@@ -7,6 +7,12 @@ pub struct Joypad {
     dulr: u8,
 }
 
+impl Default for Joypad {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Joypad {
     pub fn new() -> Joypad {
         Joypad {
@@ -58,7 +64,7 @@ impl Joypad {
         match addr {
             // Joy pad
             0xFF00 => {
-                return match (self.joypad >> 4) & 0x3 {
+                match (self.joypad >> 4) & 0x3 {
                     // Return both
                     0x0 => 0xC0 | (self.dulr & self.ssba),
 
@@ -72,7 +78,7 @@ impl Joypad {
                     0x3 => 0xFF,
 
                     _ => unreachable!(),
-                };
+                }
             }
 
             _ => unreachable!(),

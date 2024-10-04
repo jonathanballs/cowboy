@@ -17,6 +17,12 @@ pub struct CPU {
     pub ime: bool,
 }
 
+impl Default for CPU {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CPU {
     pub fn new() -> CPU {
         CPU {
@@ -227,6 +233,6 @@ impl CPU {
     pub fn get_memory_word(&mut self, memory: &MMU, addr: u16) -> u16 {
         let little = memory.read_byte(addr) as u16;
         let big = memory.read_byte(addr + 1) as u16;
-        return (big << 8) | little;
+        (big << 8) | little
     }
 }

@@ -15,7 +15,7 @@ fn parse_number(s: &str) -> Option<u16> {
     } else if s.to_lowercase().starts_with("0b") {
         u16::from_str_radix(&s[2..], 2).ok()
     } else {
-        u16::from_str_radix(s, 10).ok()
+        s.parse::<u16>().ok()
     }
 }
 
@@ -127,7 +127,7 @@ impl GameBoy {
             .map(|o| {
                 format!(
                     "{:02x}",
-                    self.mmu.read_byte(self.cpu.registers.pc + o as u16)
+                    self.mmu.read_byte(self.cpu.registers.pc + o)
                 )
             })
             .collect::<Vec<String>>()
@@ -144,17 +144,14 @@ impl GameBoy {
     fn print_memory_range(&self, args: Vec<&str>) {
         const BYTES_PER_ROW: u16 = 16;
 
-        let parsed_args = args.iter().map(|s| parse_number(s)).fold(
-            Some(vec![] as Vec<u16>),
-            |acc, curr| match (acc, curr) {
-                (None, _) => None,
-                (_, None) => None,
-                (Some(mut v), Some(n)) => {
-                    v.push(n);
-                    Some(v.to_vec())
-                }
-            },
-        );
+        let parsed_args: Option<Vec<u16>> = args.iter()
+            .map(|s| parse_number(s))
+            .try_fold(Vec::new(), |mut acc, curr| {
+                curr.map(|n| {
+                    acc.push(n);
+                    acc
+                })
+            });
 
         let (start, end) = match parsed_args {
             Some(nums) => match nums.as_slice() {
@@ -200,13 +197,13 @@ impl GameBoy {
             if b {
                 return "true ".green().to_string();
             }
-            return "false".red().to_string();
+            "false".red().to_string()
         }
 
         println!("======== interrupts ========");
         println!("           enabled   flagged");
         println!("IME:       {}", colored_bool(self.cpu.ime));
-        println!("");
+        println!();
         println!(
             "VBlank:    {:5}     {}",
             colored_bool(self.mmu.ie & 0x1 > 0),
@@ -233,7 +230,7 @@ impl GameBoy {
             colored_bool(self.mmu.read_byte(0xFF0F) & 0x10 > 0)
         );
 
-        println!("");
+        println!();
     }
 
     fn print_help(&self) {
@@ -251,7 +248,7 @@ impl GameBoy {
         println!("[ro]m                     display gameboy rom");
         println!("[ins]tructions            last cpu operations");
         println!("=============================================");
-        println!("");
+        println!();
     }
 }
 

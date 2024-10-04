@@ -6,8 +6,8 @@ use crate::mmu::ppu::{SCREEN_HEIGHT, SCREEN_WIDTH};
 pub fn window_loop(rx: Receiver<Vec<u32>>, tx: Sender<(bool, Key)>, game_title: &String) {
     let mut window = Window::new(
         format!("Cowboy Emulator - {}", game_title).as_str(),
-        SCREEN_WIDTH as usize,
-        SCREEN_HEIGHT as usize,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
         WindowOptions {
             scale: Scale::X4,
             ..WindowOptions::default()
@@ -18,7 +18,7 @@ pub fn window_loop(rx: Receiver<Vec<u32>>, tx: Sender<(bool, Key)>, game_title: 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         if let Some(frame_buffer) = most_recent_frame(&rx) {
             window
-                .update_with_buffer(&frame_buffer, SCREEN_WIDTH as usize, SCREEN_HEIGHT as usize)
+                .update_with_buffer(&frame_buffer, SCREEN_WIDTH, SCREEN_HEIGHT)
                 .unwrap();
         }
 
