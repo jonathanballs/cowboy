@@ -85,12 +85,12 @@ impl PPU {
 
             // Full line takes 114 ticks
             if self.modeclock >= 456 {
+                self.modeclock -= 456;
+                self.ly = (self.ly + 1) % 154;
+
                 if self.ly < SCREEN_HEIGHT as u8 {
                     self.render_scanline(self.ly);
                 }
-
-                self.modeclock -= 456;
-                self.ly = (self.ly + 1) % 154;
 
                 // Enter mode 1 (VBLANK)
                 if self.ly == 144 {
