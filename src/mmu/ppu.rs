@@ -111,14 +111,15 @@ impl PPU {
                 if self.ly == 0 {
                     // Calculate how long to sleep
                     let elapsed = self.last_frame_time.elapsed();
+                    // Update last frame time
+                    self.last_frame_time = Instant::now();
+
                     let frame_duration = Duration::from_secs_f64(1.0 / TARGET_FPS);
 
                     if elapsed < frame_duration {
                         thread::sleep(frame_duration - elapsed);
                     }
 
-                    // Update last frame time
-                    self.last_frame_time = Instant::now();
 
                     self.frame_number += 1;
                     self.frame_available = true;
